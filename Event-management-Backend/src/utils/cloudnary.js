@@ -10,7 +10,7 @@ import ApiError from "./apiError.js"
     });
 
     
-export async function uploadToCloudnary(commanFilePath) {
+export async function uploadToCloudinary(commanFilePath) {
   
     // Upload an image
     try {

@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
-import { ApiError } from "../utils/apiError.js";
+import ApiError from "../utils/apiError.js";
 import jwt from "jsonwebtoken";
 
 // Define the schema for user details
@@ -22,52 +22,27 @@ const userDetailSchema = new Schema({
         required: [true, "This field is required"],
         unique: [true, "Email already exists"]
     },
-    // Employee ID, must be unique
-    empId: {
-        type: String,
-        required: [true, "This field is required"],
-        unique: [true, "Employee ID already exists"]
-    },
     // Password for the user account
     password: {
         type: String,
         required: [true, "This field is required"]
-    },
-    // Position or job title of the user
-    position: {
-        type: String,
-        required: [true, "This field is required"]
-    },
-    // Branch location of the user
-    branch: {
-        type: String,
-        required: true
     },
     // URL to the user's avatar image
     avatar: {
         type: String,
         default: process.env.DEFAULT_USER_PIC_CLOUDINARY_URL,
     },
-    // Date when the user joined, default is the current date
-    joiningDate: {
-        type: Date,
-        default: Date.now
-    },
-    // Status to check if the user is verified
-    isVerify: {
-        type: Boolean,
-        default: false
-    },
-    // Reference to the user who verified this account
-    verifyBy: {
-        type: Schema.Types.ObjectId,
-        ref: "UserDetail"
-    },
-    // Refresh token for the user
-    refreshToken: {
-        type: String,
-        default: null    
-    },
+    // save Event id in array with event reference and Date
+    eventsArray : [{
+        EventId : {
+            type: Schema.Types.ObjectId,
+            ref : "Event",
+        },
+        Date : {
+            type:Date,
+            default : new Date.now()
+        }
+    }],
     // Last login date of the user
     lastLogin: {
         type: Date,
@@ -84,35 +59,18 @@ userDetailSchema.pre("save", async function (next) {
 });
 
 // Custom method to check if the provided password is correct
-userDetailSchema.methods.IsPasswordCorrect = function (password) {
+userDetailSchema.methods.IsPasswordCorrect = async function (password) {
     if (!password) {
         return new ApiError(400, "Password not received");
     }
-    return bcrypt.compare(password, this.password);
-};
-
-// Method to generate a refresh token for the user
-userDetailSchema.methods.GenerateRefreshToken = function () {
-    return jwt.sign(
-        {
-            _id: this._id,
-            username: this.username
-        },
-        process.env.REFRESH_TOKEN_SECRET_KEY,
-        {
-            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
-        }
-    );
+    return await bcrypt.compare(password, this.password);
 };
 
 // Method to generate an access token for the user
-userDetailSchema.methods.GenerateAccessToken = function () {
-    return jwt.sign(
+userDetailSchema.methods.GenerateAccessToken = async function () {
+    return await jwt.sign(
         {
-            _id: this._id,
-            username: this.username,
-            fullname: this.fullname,
-            email: this.email
+            _id: this._id
         },
         process.env.ACCESS_TOKEN_SECRET_KEY,
         {
@@ -122,4 +80,5 @@ userDetailSchema.methods.GenerateAccessToken = function () {
 };
 
 // Export the UserDetail model
-export const UserDetail = mongoose.model('UserDetail', userDetailSchema);
+const UserDetail = mongoose.model('UserDetail', userDetailSchema);
+export default UserDetail
