@@ -1,24 +1,32 @@
-import express from "express";
+import {Router} from "express";
 
 // import controllers
-import { loginPage, loginUser, registerPage, registerUser, profile, logout } from "../controllers/userController.js";
+import { loginUser, registerUser, logoutUser, getUserDetails, updateUser, changeUserPassword, setUserAvatar, removeUserAvatar, deleteUser, getAllEventList } from "../controllers/user.controller.js";
 
 // import middlewares
-import { CheckLogger, CookieCheck, LoginCheck } from "../middlewares/auth.middleware.js";
+import { isLogin, ifAlreadyLogin } from "../middlewares/auth.middleware.js";
 
 
-const userRouter = express.Router();
+const userRouter = Router();
 
-// Route for user registration
-userRouter.route("/register").post(registerUser);
+userRouter.route("/register").post(ifAlreadyLogin ,registerUser);
 
-// Route for user login
-userRouter.route("/").post(loginUser);
+userRouter.route("/login").post(ifAlreadyLogin, loginUser);
 
-// Route for user profile (requires login)
-userRouter.route("/profile").get(LoginCheck, CheckLogger, profile);
+userRouter.route("/logout/:userId").post(isLogin, logoutUser)
 
-// Route for user logout (requires login)
-userRouter.route("/logout").all(LoginCheck, logout);
+userRouter.route("/getUserDetails/:userId").get(isLogin, getUserDetails)
 
-export { userRouter };
+userRouter.route("/updateUserDetails/:userId").post(isLogin, updateUser)
+
+userRouter.route("/changeUserPassword/:userId").post(isLogin, changeUserPassword)
+
+userRouter.route("/deleteUser/:userId").post(isLogin, deleteUser)
+
+userRouter.route("/setUserAvatar/:userId").post(isLogin, setUserAvatar)
+
+userRouter.route("/removeUserAvatar/:userId").post(isLogin, removeUserAvatar)
+
+userRouter.route("/getAllEventList/:userId").get(isLogin, getAllEventList)
+
+export default userRouter;
