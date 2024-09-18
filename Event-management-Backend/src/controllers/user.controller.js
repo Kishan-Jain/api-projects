@@ -124,7 +124,6 @@ export const loginUser = asyncHandler(async (req, res) => {
   if (!req.body) {
     throw new ApiError(400, "DataError : Data not received");
   }
-
   // Extract data from the request body
   const { userName, password } = req.body;
 
@@ -152,21 +151,20 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   // Verify user password
-  if (!(userData.IsPasswordCorrect(password))) {
+  if (!(await userData.IsPasswordCorrect(password))) {
     throw new ApiError(404, "DataError : Incorrect password");
   }
 
   // Generate an access token 
   let accessToken
   try {
-    accessToken = userData.generateAccessToken();
+    accessToken = userData.GenerateAccessToken();
   } catch (error) {
     throw new ApiError(500, `DbError : ${error.message || "Unable to generate access token"}`)
   }
   if(!accessToken) {
     throw new ApiError(500, "DbError : AccessToken not generated")
   }
-
   let updatedUser;
   try {
     updatedUser = await UserDetail.findByIdAndUpdate(userData._id, {
@@ -198,7 +196,7 @@ export const logoutUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "LoginError : User not logged in, please login first");
   }
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -232,7 +230,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
   }
 
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -272,7 +270,7 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
 
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -282,6 +280,12 @@ export const updateUser = asyncHandler(async (req, res) => {
   // Validate request body fields
   if (!req.body) {
     throw new ApiError(400, "DataError : Data not received");
+  }
+  
+  const {_id, userName, email, password, avatar, eventsArray} = req.body
+  // check some field not updated here
+  if ([_id, userName, email, password, avatar, eventsArray].some(field => field !== undefined)){
+    throw new ApiError(400, "DataError : field not allow to update")
   }
 
   let updatedUserDetails;
@@ -317,7 +321,7 @@ export const changeUserPassword = asyncHandler(async (req, res) => {
   }
 
   // Check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -355,8 +359,8 @@ export const changeUserPassword = asyncHandler(async (req, res) => {
   }
 
   // Verify old password
-  if (!(userData.IsPasswordCorrect(oldPassword))) {
-    throw new ApiError(404, "DateError : given password is incorrect");
+  if (!(await userData.IsPasswordCorrect(oldPassword))) {
+    throw new ApiError(404, "DateError : old password is incorrect");
   }
 
   try {
@@ -366,7 +370,7 @@ export const changeUserPassword = asyncHandler(async (req, res) => {
     throw new ApiError(500, `DbError : ${error.message || "unable to update password"}`)
   }
   // Verify updated password
-  if (!(userData.IsPasswordCorrect(newPassword))) {
+  if (!(await userData.IsPasswordCorrect(newPassword))) {
     throw new ApiError(404, "DbError : password not updated");
   }
   return res
@@ -394,7 +398,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
   }
 
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -525,7 +529,7 @@ export const removeUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(401, "User not logged in, please login first");
   }
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -600,7 +604,7 @@ export const getAllEventList = asyncHandler(async (req, res) => {
   }
 
   // check userId from params
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){

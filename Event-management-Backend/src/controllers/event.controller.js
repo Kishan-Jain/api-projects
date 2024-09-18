@@ -28,7 +28,7 @@ export const createNewEvent = asyncHandler(async (req, res) => {
   }
 
   // check userId received from params and validate
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -122,7 +122,7 @@ export const getEventDetails = asyncHandler(async (req, res) => {
   }
 
   // check userId received from params and validate
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -183,7 +183,7 @@ export const getAllUsersEventslist = asyncHandler(async (req, res) => {
   }
 
   // check userId received from params and validate
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -200,6 +200,7 @@ export const getAllUsersEventslist = asyncHandler(async (req, res) => {
   if(!findAllEvent){
     throw new ApiError(500, "DbError : Event not found")
   }
+  let allEventArray = new Array()
   for(let event of findAllEvent){
     let searchUser
     try {
@@ -210,18 +211,21 @@ export const getAllUsersEventslist = asyncHandler(async (req, res) => {
     if(!searchUser){
       throw new ApiError(500, "DbError : User not found")
     }
+    let newEventObject = {}
     try {
-      event.userName = searchUser.userName
-      event.userFullName = searchUser.fullName
+      Object.assign(newEventObject, event.toJSON())
+      newEventObject.userName = searchUser.userName
+      newEventObject.userFullName = searchUser.fullName
     } catch (error) {
-      throw new ApiError(500, "Error : User data assigning in event object faild")
+      throw new ApiError(500, `Error : ${ error.message || "User data assigning in event object faild"}`)
     }
+    allEventArray.push(newEventObject)
   }
 
   return res
   .status(200)
   .json(
-    200, findAllEvent, "SuccessMessage : all event reteived"
+    new ApiResponse(200, allEventArray, "SuccessMessage : all event reteived")
   )
 })
 
@@ -242,7 +246,7 @@ export const updateEventDetails = asyncHandler(async (req, res) => {
   }
 
   // check userId received from params and validate
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){
@@ -257,6 +261,10 @@ export const updateEventDetails = asyncHandler(async (req, res) => {
   // Validate request body fields
   if (!req.body) {
     throw new ApiError(400, "DataError : Data not received");
+  }
+
+  if([req.body?._id, req.body?.userId].some(field => field !== undefined)){
+    throw new ApiError(400, "DataError : field not allow to update")
   }
 
   // search user details from database by userId
@@ -312,7 +320,7 @@ export const removeEvent = asyncHandler(async (req, res) => {
   }
 
   // check userId received from params and validate
-  if(req.params?.userId){
+  if(!req.params?.userId){
     throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params?.userId !== req.userId){

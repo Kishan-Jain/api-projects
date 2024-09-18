@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { isLogin } from "../middlewares/auth.middleware";
-import { createNewEvent, getAllUsersEventslist, getEventDetails, removeEvent, updateEventDetails } from "../controllers/event.controller";
+import { isLogin } from "../middlewares/auth.middleware.js";
+import { createNewEvent, getAllUsersEventslist, getEventDetails, removeEvent, updateEventDetails } from "../controllers/event.controller.js";
 
 const eventRouter = Router()
 
@@ -10,7 +10,7 @@ eventRouter.route("/:userId/getEventDetails/:eventId").get(isLogin, getEventDeta
 
 eventRouter.route("/:userId/getAllUsersEventList").get(isLogin, getAllUsersEventslist)
 
-eventRouter.route("/:userId/updateEventDetails/:eventId").post(isLogin, updateEventDetails)
+eventRouter.route("/:userId/updateEventDetails/:eventId").patch(isLogin, updateEventDetails)
 
 eventRouter.route("/:userId/removeEvent/:eventId").delete(isLogin, removeEvent)
 

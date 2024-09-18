@@ -1,8 +1,9 @@
+import asyncHandler from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/apiError.js";
 
 // When check user login or not, for logout or avoid login/register page;
-export const isLogin = async (req, res, next) => {
+export const isLogin = asyncHandler(async (req, res, next) => {
   /**
    * check accessToken
    * decode accessToken
@@ -32,10 +33,10 @@ export const isLogin = async (req, res, next) => {
   // assign userId in request object
   req.userId = decodeToken._id
   next()
-};
+});
 
 // when check user login or not, for direct jump profile page / updates
-export const ifAlreadyLogin = async (req, res, next) => {
+export const ifAlreadyLogin = asyncHandler(async (req, res, next) => {
   /**
    * check accessToken exitanse
    * call next function
@@ -47,4 +48,4 @@ export const ifAlreadyLogin = async (req, res, next) => {
   }
   // call simply next when access token not exits
   next()
-};
+});

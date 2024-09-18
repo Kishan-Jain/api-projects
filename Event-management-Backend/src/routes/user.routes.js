@@ -17,15 +17,15 @@ userRouter.route("/logout/:userId").post(isLogin, logoutUser)
 
 userRouter.route("/getUserDetails/:userId").get(isLogin, getUserDetails)
 
-userRouter.route("/updateUserDetails/:userId").post(isLogin, updateUser)
+userRouter.route("/updateUserDetails/:userId").patch(isLogin, updateUser)
 
-userRouter.route("/changeUserPassword/:userId").post(isLogin, changeUserPassword)
+userRouter.route("/changeUserPassword/:userId").patch(isLogin, changeUserPassword)
 
-userRouter.route("/deleteUser/:userId").post(isLogin, deleteUser)
+userRouter.route("/deleteUser/:userId").delete(isLogin, deleteUser)
 
-userRouter.route("/setUserAvatar/:userId").post(isLogin, setUserAvatar)
+userRouter.route("/setUserAvatar/:userId").patch(isLogin, setUserAvatar)
 
-userRouter.route("/removeUserAvatar/:userId").post(isLogin, removeUserAvatar)
+userRouter.route("/removeUserAvatar/:userId").patch(isLogin, removeUserAvatar)
 
 userRouter.route("/getAllEventList/:userId").get(isLogin, getAllEventList)
 
