@@ -19,6 +19,7 @@ import { DeleteToCloudinary, uploadToCloudinary } from "../utils/cloudnary.js";
 
 // custom methods
 import { isSpace } from "../utils/customMethods.js";
+import sendAMail from "../utils/email.configration.js";
 
 // Controller for register Userdepartment
 export const registerUser = asyncHandler(async (req, res) => {
@@ -104,7 +105,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   if (!createdUser) {
     throw new ApiError(500, "DbError : User not found")
   }
-
+  console.log(sendAMail(email, "User register successfully", `user register successfully`))
   // Render success message
   return res
     .status(201)
@@ -449,7 +450,7 @@ export const setUserAvatar = asyncHandler(async (req, res) => {
     // If user is not logged in, throw an authentication error
     throw new ApiError(401, "LoginError : User not logged in, please login first");
   }
-
+  console.log(req.body)
   // Check if file is received
   if (!req.file) {
     // If no file is received, throw a bad request error
