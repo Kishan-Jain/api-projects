@@ -27,7 +27,7 @@ Event managent application server Api for store users, events details and manage
  - #### socket.io, jwt, cloudinary
 
 ## Model Schema
-![alt text](schema.png)
+![alt text](public/temp/schema.png)
 
 ## Api URL : 
 
