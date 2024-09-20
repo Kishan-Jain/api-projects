@@ -26,6 +26,9 @@ Event managent application server Api for store users, events details and manage
  - #### mongoose, 
  - #### socket.io, jwt, cloudinary
 
+## Model Schema
+![alt text](schema.png)
+
 ## Api URL : 
 
     Base Url : /api/v1
