@@ -9,7 +9,7 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
-import { EmployeeDetail } from "../models/employee.models.js";
+import EmployeeDetail from "../models/employee.models.js";
 import { DeleteToCloudinary, uploadToCloudnary } from "../utils/cloudnary.js";
 
 

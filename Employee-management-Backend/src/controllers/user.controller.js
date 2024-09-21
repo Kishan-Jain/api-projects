@@ -5,11 +5,11 @@
 // update avtar
 // remove avtar
 
+import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/apiResponse.js";
 import ApiError from "../utils/apiError.js";
-import asyncHandler from "../utils/asyncHandler.js";
-import { EmployeeDetail } from "../models/employee.models.js";
-import { UserDetail } from "../models/user.models.js";
+import EmployeeDetail from "../models/employee.models.js";
+import UserDetail from "../models/user.models.js";
 import { AccessRefreshTokenGenerator } from "../utils/accessRefreshTokenGenrator.js";
 import { DeleteToCloudinary, uploadToCloudnary } from "../utils/cloudnary.js";
 
@@ -18,7 +18,7 @@ import { isSpace } from "../utils/customMethods.js";
 
 // Controller for register Userdepartment
 export const registerUser = asyncHandler(async (req, res) => {
-
+  
   // Check if the user is already authenticated
   if (req.user) {
     throw new ApiError(400, "User already logged in, please logout or clear cookies")

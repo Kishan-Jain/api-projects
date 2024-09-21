@@ -62,4 +62,5 @@ const EmployeeDetailSchema = new Schema({
 }, { timestamps: true }); // Automatically adds createdAt and updatedAt fields
 
 // Export the EmployeeDetail model
-export const EmployeeDetail = mongoose.model('EmployeeDetail', EmployeeDetailSchema);
+const EmployeeDetail = mongoose.model('EmployeeDetail', EmployeeDetailSchema);
+export default EmployeeDetail

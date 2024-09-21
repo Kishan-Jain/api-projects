@@ -122,4 +122,5 @@ userDetailSchema.methods.GenerateAccessToken = function () {
 };
 
 // Export the UserDetail model
-export const UserDetail = mongoose.model('UserDetail', userDetailSchema);
+const UserDetail = mongoose.model('UserDetail', userDetailSchema);
+export default UserDetail
