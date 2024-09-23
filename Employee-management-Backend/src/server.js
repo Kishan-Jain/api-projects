@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import app from "./app.js"
-import connectDB from "./db/connectDB.js"
+import connectDB from "./db/connect.db.js"
 import ApiError from "./utils/apiError.js";
 
 // dotenv configration
@@ -8,11 +8,15 @@ dotenv.config({
     path:"./env"
 })
 
-connectDB()
+const port = process.env.PORT
+const dbUri = process.env.DB_URI
+const dbName = process.env.DB_NAME
+
+connectDB(dbUri, dbName)
 .then(
-app.listen(8000, () => {
-    console.log("server listen on http://localhost:8000")
+app.listen(port, () => {
+    console.log(`server listen on PORT : ${port}`)
 }))
 .catch( (error) => {
-    throw new ApiError(500, error.message || "Enable to connect DB-Server")
+    console.log("DB eoonection error")
 })
