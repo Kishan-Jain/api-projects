@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon -r dotenv/config src/server"
+    "dev": "nodemon -r dotenv/config src/server",
+    "start": "node -r dotenv/config src/server"
   },
   "type": "module",
   "keywords": [],
