@@ -18,13 +18,13 @@
 
 
 
-import { ApiError } from "../utils/apiError.js";
-import { ApiResponse } from "../utils/apiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { Seller } from "../models/sellers/seller.models.js";
+import ApiError from "../utils/apiError.js";
+import ApiResponse from "../utils/apiResponse.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import Seller from "../models/sellers/seller.models.js";
 import {
   uploadFileToCloudinary,
-  RemoveFileToCloudinary,
+  RemoveFileFromCloudinary,
 } from "../utils/cloudinary.js";
 
 export const sellerRegister = asyncHandler(async (req, res) => {

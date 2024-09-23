@@ -20,8 +20,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import User from "../models/users/user.models.js";
-import { accessAndRefreshTokenGenrator } from "../utils/accessRefreshTokenGenrator.js";
-import { uploadFileToCloudinary, RemoveFileToCloudinary } from "../utils/cloudinary.js";
+import accessAndRefreshTokenGenrator from "../utils/accessRefreshTokenGenrator.js";
+import { uploadFileToCloudinary, RemoveFileFromCloudinary } from "../utils/cloudinary.js";
 
 export const userRegister = asyncHandler(async (req, res) => {
   // Register user:
