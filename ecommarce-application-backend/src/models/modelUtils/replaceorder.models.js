@@ -46,12 +46,9 @@ const replaceSchema = new mongoose.Schema(
       ],
       default: "pending",
     },
-    // status : {
-    //     type : String,
-    //     ref : 'Order'
-    // }
   },
   { timestamps: true }
 );
 
-export const Replace = mongoose.model("Replace", replaceSchema);
+const Replace = mongoose.model("Replace", replaceSchema);
+export default Replace

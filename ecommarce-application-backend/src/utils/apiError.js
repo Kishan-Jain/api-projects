@@ -1,4 +1,4 @@
-class ApiError extends Error{
+export default class ApiError extends Error{
     constructor(
         statusCode,
         massage = "Some error founds",
@@ -20,5 +20,3 @@ class ApiError extends Error{
       }
     }
 }
-
-export {ApiError}

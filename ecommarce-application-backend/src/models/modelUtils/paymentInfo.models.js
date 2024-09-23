@@ -10,6 +10,16 @@ const paymentSchema = new mongoose.Schema({
     ref: "Order",
     required: [true, "field is required"],
   },
+  sellerId : {
+    type : mongoose.Schema.Types.ObjectId,
+    ref : "Seller",
+    required : true
+  },
+  userId : {
+    type : mongoose.Schema.Types.ObjectId,
+    ref : "User",
+    required : true
+  },
   paymentType: {
     type: String,
     enum: ["netbanking", "upi", "debit_card/ credit_card", "cod"],
@@ -19,8 +29,9 @@ const paymentSchema = new mongoose.Schema({
   stutes: {
     type: String,
     enum: ["pending", "success", "failed"],
-    required: [true, "field is required"],
-  },
+    required: [true, "Payment Status not difine"],
+  }
 });
 
-export const PaymentDetail = mongoose.model("PaymentDetail", paymentSchema);
+const PaymentDetail = mongoose.model("PaymentDetail", paymentSchema);
+export default PaymentDetail

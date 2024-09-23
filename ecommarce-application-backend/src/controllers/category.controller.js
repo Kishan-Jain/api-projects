@@ -1,42 +1,49 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { Category } from "../models/products/category.models.js";
+/**
+ * Add category
+ * get all category
+ * update Category
+ * change CategoryPic
+ * remove category
+ */
+
+import asyncHandler from "../utils/asyncHandler.js";
+import  ApiError from "../utils/apiError.js";
+import ApiResponse from "../utils/apiResponse.js";
+import Category from "../models/products/category.models.js";
 import {
-  RemoveFileToCloudinary,
+  RemoveFileFromCloudinary,
+  RemoveFileToFromCloudinary,
   uploadFileToCloudinary,
 } from "../utils/cloudinary.js";
-import { ApiError } from "../utils/apiError.js";
-import { ApiResponse } from "../utils/apiResponse.js";
 
 
-export const addCategory = asyncHandler(async (req, res) => {
+export const addNewCategory = asyncHandler(async (req, res) => {
   
   // Check if user is authenticated
   if(!req.userId){
-    throw new ApiError(400, "Not Authenticate")
+    throw new ApiError(400, "authError : User not authenticate")
+  }
+  if(req.userType !== "Seller"){
+    throw new ApiError(400, "authError : User not authenticate")
   }
   // Check if request body is empty
   if (!req.body) {
-    throw new ApiError(400, "No data received in the request body");
+    throw new ApiError(404, "DataError : No data received in the request body");
   }
-
+  if (!req.file){
+    throw new ApiError(404, "multerError : file not received")
+  }
   const { title } = req.body; // Extract the category title from the request body
 
   // Check if a title is blank
   if (title.trim() === "") {
-    throw new ApiError(400, "Category Title is required");
+    throw new ApiError(400, "dataError : Category Title is required");
   }
-
-  // Check if a file was uploaded
-  if (!req.file) {
-    throw new ApiError(400, "No file received");
-  }
-
   const categoryPicLocalPath = req.file?.path; // Get the local path of the uploaded file
 
   if (!categoryPicLocalPath) {
-    throw new ApiError(500, "File path not found");
+    throw new ApiError(500, "multerEror : File path not found");
   }
-
   let categoryPicCloudinary;
   try {
     // Upload the file to Cloudinary and get the Cloudinary URL
@@ -44,12 +51,12 @@ export const addCategory = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new ApiError(
       500,
-      error.message || "Failed to upload file to Cloudinary"
+      `cloudinaryError : ${error.message || "Failed to upload file to Cloudinary"}`
     );
   }
 
   if (!categoryPicCloudinary) {
-    throw new ApiError(500, "Failed to receive file data from Cloudinary");
+    throw new ApiError(500, "CloudinaryError : Failed to receive file data from Cloudinary");
   }
 
   let newCategory;
@@ -57,33 +64,41 @@ export const addCategory = asyncHandler(async (req, res) => {
     // Create a new category in the database
     newCategory = await Category.create({
       title: title,
-      pic: categoryPicCloudinary.url,
+      pic: categoryPicCloudinary?.url,
     });
   } catch (error) {
     throw new ApiError(
       500,
-      error.message || "Failed to add category to the database"
+      `dbError : ${error.message || "Failed to add category to the database"}`
     );
   }
 
   // Retrieve the newly added category
-  newCategory = await Category.findById(newCategory._id);
+  let searchNewCategory
+  try {
+    searchNewCategory = await Category.findById(newCategory._id);
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find category"}`)
+  }
 
-  if (!newCategory) {
-    throw new ApiError(500, "Category data not found");
+  if (!searchNewCategory) {
+    throw new ApiError(500, "DbError : Category data not found");
   }
 
   // Return a success response with the new category data
   return res
     .status(201)
-    .json(new ApiResponse(201, newCategory, "Category added successfully"));
+    .json(new ApiResponse(201, searchNewCategory, "successMessage : Category added successfully"));
 });
 
-export const viewAllCategories = asyncHandler(async (req, res) => {
+export const getAllCategories = asyncHandler(async (req, res) => {
   
   // Check if user is authenticated
   if(!req.userId){
-    throw new ApiError(400, "Not Authenticate")
+    throw new ApiError(401, "authError : Not Authenticate")
+  }
+  if(req.userType !== "Seller"){
+    throw new ApiError(401, "authError : User not authenticate")
   }
   
   // Retrieve all categories from the database
@@ -101,164 +116,144 @@ export const viewAllCategories = asyncHandler(async (req, res) => {
 });
 
 
-export const updateCategoryData = asyncHandler(async (req, res) => {
+export const updateCategoryTitle = asyncHandler(async (req, res) => {
   // Check if user is authenticated
   if(!req.userId){
-    throw new ApiError(400, "Not Authenticate")
+    throw new ApiError(400, "AuthError : Not Authenticate")
+  }
+  if(req.userType !== "Seller"){
+    throw new ApiError(400, "authError : User not authenticate")
   }
 
   if (!req.body) {
-    throw new ApiError(400, "No data received");
+    throw new ApiError(400, "DataError : No data received");
   }
-  const [_id, title] = req.body;
-
-  if ([_id, title].some((field) => field?.trim() === "")) {
-    throw new ApiError(400, "Category ID and title are required");
+  if(!req.params?.categoryId){
+    throw new ApiError(400, "DataError : Category id not received");
   }
-
+  const {title} = req.body;
+  if (!(title && title.trim() === "")) {
+    throw new ApiError(400, "DataError : Title is required");
+  }
+  const {categoryId} = req.params;
+  if (!(categoryId && categoryId.trim() === "")) {
+    throw new ApiError(400, "DataError : categoryId is required");
+  }
   // Find the existing category by ID
-  const searchCategory = await Category.findById(_id);
+  let searchCategory
+  try {
+    searchCategory = await Category.findById(categoryId);
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find Category"}`)
+  }
 
   if (!searchCategory) {
-    throw new ApiError(400, "Given _id does not exist");
+    throw new ApiError(400, "DataError : Category id not correct");
   }
-
-  // Check if a file was uploaded
-  if (!req.file) {
-    throw new ApiError(400, "No file received");
-  }
-
-  const categoryPicNewPath = req.file?.path;
-
-  if (!categoryPicNewPath) {
-    throw new ApiError(500, "File path not found");
-  }
-
-  try {
-    // Upload the new picture to Cloudinary
-    const newPicCloudinaryResponse =
-      await uploadFileToCloudinary(categoryPicNewPath);
-  } catch (error) {
-    throw new ApiError(
-      500,
-      error.message || "Failed to upload picture to Cloudinary"
-    );
-  }
-
-  try {
-    // Delete the old picture from Cloudinary
-    const deletedPicResponse = await RemoveFileToCloudinary(searchCategory.pic);
-    console.log(deletedPicResponse);
-  } catch (error) {
-    throw new ApiError(
-      500,
-      error.message || "Failed to delete picture from Cloudinary"
-    );
-  }
-
+  let updateCategory
   try {
     // Update category data in the database
-    const updatedCategory = await Category.findByIdAndUpdate(
-      _id,
+    updateCategory = await Category.findByIdAndUpdate(
+      searchCategory._id,
       {
-        $set: {
-          title: title,
-          pic: newPicCloudinaryResponse.url,
-        },
+        $set: {title},
       },
       { new: true }
     );
   } catch (error) {
-    throw new ApiError(500, error.message || "Failed to update category data");
+    throw new ApiError(500, `dbError : ${error.message || "Failed to update category data"}`);
+  }
+  if(updateCategory){
+    throw new ApiError(500, "DbError : Category not updated")
   }
 
   return res
-    .status(201)
+    .status(200)
     .json(
       new ApiResponse(
         200,
-        updatedCategory,
-        "Category data updated successfully"
+        updateCategory,
+        "SuccessMessage : Category data updated successfully"
       )
     );
 });
 
 export const updateCategoryPic = asyncHandler(async (req, res) => {
-  // Update category picture:
-  // 1. Check if user is authenticated
-  // 2. Check if request body is empty
-  // 3. Retrieve category data by ID
-  // 4. Upload new picture and store response
-  // 5. Find old picture public ID and remove it from Cloudinary
-  // 6. Set category picture URL by response
-  // 7. Return result
+  /**
+   * Update category picture:
+   * 1. Check if user is authenticated
+   * 2. Check if file received and category id received from params
+   * 3. Retrieve category data by ID
+   * 4. Upload new picture and store response
+   * 5. Find old picture public ID and remove it from Cloudinary
+   * 6. Set category picture URL by response
+   * 7. Return result
+   */
 
   // Check if user is authenticated
   if (!req.userId) {
-    throw new ApiError(400, "Not Authenticate");
+    throw new ApiError(401, "AuthError : Not Authenticate");
+  }
+  if(req.userType !== "Seller"){
+    throw new ApiError(401, "AuthError : User not authenticate")
   }
 
   // Check if request body is empty
-  if (!req.body) {
-    throw new ApiError(400, "No data received");
+  if (!req.file) {
+    throw new ApiError(404, "DataError : File not received");
   }
-
-  // Destructure categoryId from request body
-  const [categoryId] = req.body;
-
-  // Check if categoryId is empty
-  if (categoryId.trim() === "") {
-    throw new ApiError(400, "Category Id is required");
+  if(!req.params?.categoryId){
+    throw new ApiError(404, "DataError : category id not found")
   }
-
   // Retrieve category data by ID
-  const categoryData = await Category.findById({ _id: categoryId });
+  let categoryData
+  try {
+    categoryData = await Category.findById(req.params?.categoryId);
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find category"}`)
+  }
 
   // Check if category data exists
   if (!categoryData) {
-    throw new ApiError(400, "Category Id is invalid or does not exist");
-  }
-
-  // Check if file is received
-  if (!req.file) {
-    throw new ApiError(400, "File not received or file upload failed");
+    throw new ApiError(404, "DbError : Category id not correct");
   }
 
   const categoryNewPicLocalPath = req.file?.path;
 
   // Check if file path exists
   if (!categoryNewPicLocalPath) {
-    throw new ApiError(500, "File upload failed");
+    throw new ApiError(500, "DataEror : File path not received");
   }
 
+  let uploadNewPicResponse
   try {
     // Upload new picture to Cloudinary
-    const uploadNewPicResponse = await uploadFileToCloudinary(categoryNewPicLocalPath);
+    uploadNewPicResponse = await uploadFileToCloudinary(categoryNewPicLocalPath);
   } catch (error) {
-    throw new ApiError(500, "File upload on Cloudinary failed");
+    throw new ApiError(500, `CloudinaryError : ${error.message || "File upload on Cloudinary failed"}`);
   }
 
   // Check if file upload was successful
   if (!uploadNewPicResponse) {
-    throw new ApiError(500, "File not uploaded successfully");
+    throw new ApiError(500, "CloudinaryError : File not uploaded successfully");
   }
-
+  let deleteOldPicResponse
   try {
     // Remove old picture from Cloudinary
-    const deleteOldPicResponse = await RemoveFileToCloudinary(categoryData.pic);
+    deleteOldPicResponse = await RemoveFileFromCloudinary(categoryData?.pic);
   } catch (error) {
-    throw new ApiError(500, "File deletion on Cloudinary failed");
+    throw new ApiError(500, `CloudinaryError : ${error.message || "File deletion on Cloudinary failed"}`);
   }
 
   // Check if file deletion was successful
   if (!deleteOldPicResponse) {
-    throw new ApiError(500, "File not deleted successfully");
+    throw new ApiError(500, "CloudiNaryError : File not deleted successfully");
   }
-
+  let updateCategory
   try {
     // Update category picture URL in database
-    categoryData = await Category.findByIdAndUpdate(
-      { _id: categoryId },
+    updateCategory = await Category.findByIdAndUpdate(
+      categoryData._id,
       {
         $set: {
           pic: uploadNewPicResponse.url,
@@ -267,43 +262,45 @@ export const updateCategoryPic = asyncHandler(async (req, res) => {
       { new: true }
     );
   } catch (error) {
-    throw new ApiError(500, "Database Error - Category picture not saved");
+    throw new ApiError(500, "DbError : Category picture not saved");
   }
 
   // Check if category data was updated in the database
-  if (!categoryData) {
-    throw new ApiError(500, "Category picture not updated in database");
+  if (!updateCategory) {
+    throw new ApiError(500, "DbError : Category picture not updated in database");
   }
 
   // Return success response with updated category data
   return res
     .status(200)
     .json(
-      new ApiResponse(200, categoryData, "Category picture updated successfully")
+      new ApiResponse(200, updateCategory, "SuccessMessage : Category picture updated successfully")
     );
 });
 
 
 export const deleteCategory = asyncHandler(async (req, res) => {
-  if (!req.body) {
-    throw new ApiError(400, "Category ID not received");
+  
+  if(!req.userId){
+    throw new ApiError(401, "AuthError : User not Authenticate")
   }
-  const [_id] = req.body;
-
-  if (_id.trim() === "") {
-    throw new ApiError(400, "Category ID is required");
+  if(req.userType !== "Seller"){
+    throw new ApiError(401, "AuthError : User not Authenticate")
+  }
+  if(!req.params?.categoryId){
+    throw new ApiError(404, "DataError : Category id not received")
   }
 
   // Check if the category exists
-  if (!(await Category.findById(_id))) {
-    throw new ApiError(400, "Invalid category ID");
+  if (!(await Category.findById(req.params?.categoryId))) {
+    throw new ApiError(400, "DbError : categoryId not correct");
   }
 
   try {
     // Delete the category from the database
-    const categoryDeleteResponse = await Category.findByIdAndDelete(_id);
+    await Category.findByIdAndDelete(req.params?.categoryId);
   } catch (error) {
-    throw new ApiError(500, error.message || "Category not deleted");
+    throw new ApiError(500, `DbError : ${error.message || "Category not deleted"}`);
   }
 
   return res

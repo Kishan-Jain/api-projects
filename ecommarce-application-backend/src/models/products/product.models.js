@@ -11,13 +11,32 @@ const productSchema = new mongoose.Schema({
     pics : [{pic :{type:String, required : [true, "this is required field" ]}}],
     price : {type:Number, required : [true, "this is required field" ]},
     discount : {type:Number, default: 0},
-    stock : {type:Number, ref:"Seller"},
-    seller_name :{
+    stock : {type:Number, default: 1},
+    sellerId :{
         type: mongoose.Schema.Types.ObjectId,
         ref:"Seller",
         required:[true, "this is required field" ]
-    }
+    },
+    reviewList : [{
+        title : String,
+        description : {
+            type:String,
+            // required:true
+        },
+        pics : [{
+            type:String
+        }],
+        rating : {
+            type : Number,
+            required : true
+        },
+        userId : {
+            type : mongoose.Schema.Types.ObjectId,
+            ref : "User"
+        }
+    }]
 
 },{timestamps:true})
 
-export const Product = mongoose.model("Product", productSchema);
+const Product = mongoose.model("Product", productSchema);
+export default Product

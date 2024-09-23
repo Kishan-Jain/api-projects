@@ -1,9 +1,27 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/apiError.js";
-import { ApiResponse } from "../utils/apiResponse.js";
-import { User } from "../models/users/user.models.js";
+/**
+ * User Controllers
+ * - register user
+ * - login user
+ * - logout user
+ * - update user
+ * - set Avatar
+ * - remove Avatar
+ * - update user Details
+ * - add new Address
+ * - remove Address
+ * - change user Email
+ * - change user Password
+ * - reset user Password
+ * - find username
+ * - delete user
+ */
+
+import asyncHandler from "../utils/asyncHandler.js";
+import ApiError from "../utils/apiError.js";
+import ApiResponse from "../utils/apiResponse.js";
+import User from "../models/users/user.models.js";
 import { accessAndRefreshTokenGenrator } from "../utils/accessRefreshTokenGenrator.js";
-import { uploadFileToCloudinary } from "../utils/cloudinary.js";
+import { uploadFileToCloudinary, RemoveFileToCloudinary } from "../utils/cloudinary.js";
 
 export const userRegister = asyncHandler(async (req, res) => {
   // Register user:
@@ -279,83 +297,6 @@ export const addAddress = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, searchUser, "Message: Address added sussfully"));
 });
 
-
-export const addProductOnCart = asyncHandler(async (req, res) => {
-  // Add product to cart
-
-  // Destructure address details from request body
-  const { area, city, state, pincode } = req.body;
-
-  // Check if any field is empty
-  if (
-    [area, city, state, pincode].some(
-      (field) => field?.toString().trim() === ""
-    )
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  try {
-    // Retrieve user address from database
-    const userAddress = await User.findById(req.userId).select("address");
-
-    // Add new address to user's address array
-    userAddress.address.push({ area, city, state, pincode });
-    userAddress.save({ validateBeforeSave: false, new: true });
-  } catch (error) {
-    throw new ApiError(500, error || "Address not set");
-  }
-
-  // Retrieve updated user data without password and refreshToken fields
-  const searchUser = await User.findById(req.userId).select(
-    "-password -refreshToken"
-  );
-
-  // Return success response with updated user data
-  return res
-    .status(200)
-    .json(new ApiResponse(200, searchUser, "Message: done"));
-});
-
-
-export const addProductOnWiselist = asyncHandler(async (req, res) => {
-  // Add product to wishlist
-
-  // Destructure address details from request body
-  const { area, city, state, pincode } = req.body;
-
-  // Check if any field is empty
-  if (
-    [area, city, state, pincode].some(
-      (field) => field?.toString().trim() === ""
-    )
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  try {
-    // Retrieve user address from database
-    const userAddress = await User.findById(req.userId).select("address");
-
-    // Add new address to user's address array
-    userAddress.address.push({ area, city, state, pincode });
-    userAddress.save({ validateBeforeSave: false, new: true });
-  } catch (error) {
-    throw new ApiError(500, error || "Address not set");
-  }
-
-  // Retrieve updated user data without password and refreshToken fields
-  const searchUser = await User.findById(req.userId).select(
-    "-password -refreshToken"
-  );
-
-  // Return success response with updated user data
-  return res
-    .status(200)
-    .json(new ApiResponse(200, searchUser, "Message: done"));
-});
-
-
 export const updateUserData = asyncHandler(async (req, res) => {
   // user Id
   // user new data -> email, fullName
@@ -520,4 +461,78 @@ export const deleteUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "User Successfully Deleted"));
+});
+
+export const addProductOnCart = asyncHandler(async (req, res) => {
+  // Add product to cart
+
+  // Destructure address details from request body
+  const { area, city, state, pincode } = req.body;
+
+  // Check if any field is empty
+  if (
+    [area, city, state, pincode].some(
+      (field) => field?.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  try {
+    // Retrieve user address from database
+    const userAddress = await User.findById(req.userId).select("address");
+
+    // Add new address to user's address array
+    userAddress.address.push({ area, city, state, pincode });
+    userAddress.save({ validateBeforeSave: false, new: true });
+  } catch (error) {
+    throw new ApiError(500, error || "Address not set");
+  }
+
+  // Retrieve updated user data without password and refreshToken fields
+  const searchUser = await User.findById(req.userId).select(
+    "-password -refreshToken"
+  );
+
+  // Return success response with updated user data
+  return res
+    .status(200)
+    .json(new ApiResponse(200, searchUser, "Message: done"));
+});
+
+export const addProductOnWiselist = asyncHandler(async (req, res) => {
+  // Add product to wishlist
+
+  // Destructure address details from request body
+  const { area, city, state, pincode } = req.body;
+
+  // Check if any field is empty
+  if (
+    [area, city, state, pincode].some(
+      (field) => field?.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  try {
+    // Retrieve user address from database
+    const userAddress = await User.findById(req.userId).select("address");
+
+    // Add new address to user's address array
+    userAddress.address.push({ area, city, state, pincode });
+    userAddress.save({ validateBeforeSave: false, new: true });
+  } catch (error) {
+    throw new ApiError(500, error || "Address not set");
+  }
+
+  // Retrieve updated user data without password and refreshToken fields
+  const searchUser = await User.findById(req.userId).select(
+    "-password -refreshToken"
+  );
+
+  // Return success response with updated user data
+  return res
+    .status(200)
+    .json(new ApiResponse(200, searchUser, "Message: done"));
 });

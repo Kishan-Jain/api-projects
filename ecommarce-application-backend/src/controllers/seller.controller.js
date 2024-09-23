@@ -1,3 +1,23 @@
+/**
+ * Seller Controllers
+ * - register Seller
+ * - login Seller
+ * - logout Seller
+ * - update Seller
+ * - set Avatar
+ * - remove Avatar
+ * - update Seller Details
+ * - Add new Address
+ * - remove address
+ * - change Seller Email
+ * - change Seller Password
+ * - reset Seller Password
+ * - find userName
+ * - delete Seller
+ */
+
+
+
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";

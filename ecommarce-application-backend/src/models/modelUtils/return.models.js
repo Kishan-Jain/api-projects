@@ -34,12 +34,9 @@ const returnSchema = new mongoose.Schema(
       enum: ["pending", "process", "complete", "cancelled", "returned"],
       default: "pending",
     },
-    // status : {
-    //     type : String,
-    //     ref : 'Order'
-    // }
   },
   { timestamps: true }
 );
 
-export const Return = mongoose.model("Return", returnSchema);
+const Return = mongoose.model("Return", returnSchema);
+export default Return

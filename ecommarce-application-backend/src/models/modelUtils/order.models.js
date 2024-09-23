@@ -1,18 +1,15 @@
 import mongoose from "mongoose";
 // subSchema
 
-const orderedItem = new mongoose.Schema(
-  {
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: [true, "this is required field"],
-    },
-    quantity: { type: Number, default: 1 },
-    amount: Number, // amount calculate on pre save time
+const orderedItem = new mongoose.Schema({
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: [true, "this is required field"],
   },
-  { timestamps: true }
-);
+  quantity: { type: Number, default: 1 },
+  price: Number,
+});
 
 // mainSchema
 
@@ -30,7 +27,7 @@ const orderSchema = new mongoose.Schema(
     },
 
     orderedItem: [orderedItem],
-    total: Number, // total in calculate on pre save method
+    totalAmount: Number,
 
     paymentId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -54,12 +51,9 @@ const orderSchema = new mongoose.Schema(
       ],
       default: "pending",
     },
-    // status : {
-    //     type : String,
-    //     ref : 'Order'
-    // }
   },
   { timestamps: true }
 );
 
-export const Order = mongoose.model("Order", orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+export default Order

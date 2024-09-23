@@ -1,9 +1,16 @@
 import mongoose from "mongoose";
 
-// mainSchema
-
-const trackingSchema = new mongoose.Schema(
-  {
+const trackingSchema = new mongoose.Schema({
+    sellerId : {
+      type : mongoose.Schema.Types.ObjectId,
+      ref : "Seller",
+      required : true
+    },
+    userId : {
+      type : mongoose.Schema.Types.ObjectId,
+      ref : "User",
+      required : true
+    },
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
@@ -24,8 +31,7 @@ const trackingSchema = new mongoose.Schema(
       enum: ["request", "process", "transmit", "complete"],
       default: "request",
     },
-  },
-  { timestamps: true }
-);
+},{ timestamps: true });
 
-export const Tracking = mongoose.model("Tracking", trackingSchema);
+const Tracking = mongoose.model("Tracking", trackingSchema);
+export default Tracking
