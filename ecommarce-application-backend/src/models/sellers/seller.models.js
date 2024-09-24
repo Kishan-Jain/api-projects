@@ -47,51 +47,54 @@ const returnOrderId = new mongoose.Schema(
   { timestamps: true }
 );
 
-const paymentId = new mongoose.Schema({
-  paymentId : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "PaymentDetail",
-    required : true
+const paymentId = new mongoose.Schema(
+  {
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PaymentDetail",
+      required: true,
+    },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      required: true,
+    },
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Seller",
+      required: true,
+    },
   },
-  orderId : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "Order",
-    required : true
-  },
-  sellerId : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "Seller",
-    required : true
-  }
-},{timestamps:true})
+  { timestamps: true }
+);
 
 const address = new mongoose.Schema({
-    name : {
-      type : String,
-      required : true,
-    },
-    area: {
-      type: String,
-      maxlength: 100,
-      required: [true, "this is required field"],
-    },
-    city: {
-      type: String,
-      maxlength: 100,
-      required: [true, "this is required field"],
-    },
-    state: {
-      type: String,
-      maxlength: 100,
-      required: [true, "this is required field"],
-    },
-    country : {
-      type : String,
-      default : "India"
-    },
-    pincode: { type: Number, required: true },
-  });
-  
+  name: {
+    type: String,
+    required: true,
+  },
+  area: {
+    type: String,
+    maxlength: 100,
+    required: [true, "this is required field"],
+  },
+  city: {
+    type: String,
+    maxlength: 100,
+    required: [true, "this is required field"],
+  },
+  state: {
+    type: String,
+    maxlength: 100,
+    required: [true, "this is required field"],
+  },
+  country: {
+    type: String,
+    default: "India",
+  },
+  pincode: { type: Number, required: true },
+});
+
 // mainSchema
 
 const sellerSchema = new mongoose.Schema(
@@ -105,16 +108,19 @@ const sellerSchema = new mongoose.Schema(
     fullName: { type: String, required: [true, "this is required field"] },
     password: { type: String, required: [true, "this is required field"] },
     lastLogin: { type: Date, default: null },
-    avatar: { type: String, default:process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL },
+    avatar: {
+      type: String,
+      default: process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL,
+    },
     productlist: [productID],
     orderlist: [orderId],
-    repleshOrderList : [repleshOrderId],
-    returnOrderList : [returnOrderId],
-    paymentList : [paymentId],
-    address : [address],
+    repleshOrderList: [repleshOrderId],
+    returnOrderList: [returnOrderId],
+    paymentList: [paymentId],
+    address: [address],
     refreshTokan: {
       type: String,
-      default : null
+      default: null,
     },
   },
   { timestamps: true }
@@ -137,7 +143,7 @@ sellerSchema.methods.genrateAccessToken = function () {
     {
       _id: this._id,
       username: this.username,
-      userType : "Seller"
+      userType: "Seller",
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
@@ -159,4 +165,4 @@ sellerSchema.methods.genrateRefreshToken = function () {
 };
 
 const Seller = mongoose.model("Seller", sellerSchema);
-export default Seller
+export default Seller;
