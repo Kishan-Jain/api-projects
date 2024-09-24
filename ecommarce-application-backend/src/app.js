@@ -8,9 +8,10 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // inport routes
-
-
+import mainRouter from "./routes/main.routes.js"
 // difining routes 
+
+app.use("/api/v1", mainRouter)
 
 // render server define massage in home page Wep Request
 app.get("/", (req, res) => {
