@@ -11,9 +11,8 @@ import  ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import Category from "../models/products/category.models.js";
 import {
-  RemoveFileFromCloudinary,
-  RemoveFileToFromCloudinary,
   uploadFileToCloudinary,
+  RemoveFileFromCloudinary,
 } from "../utils/cloudinary.js";
 
 

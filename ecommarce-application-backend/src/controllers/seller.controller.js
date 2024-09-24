@@ -2,30 +2,27 @@
  * Seller Controllers
  * - register Seller
  * - login Seller
+ * - login seller with email
  * - logout Seller
  * - update Seller
  * - set Avatar
  * - remove Avatar
- * - update Seller Details
- * - Add new Address
- * - remove address
- * - change Seller Email
  * - change Seller Password
  * - reset Seller Password
- * - find userName
  * - delete Seller
+ * - Add new Address
+ * - remove address
  */
-
-
 
 import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import Seller from "../models/sellers/seller.models.js";
-import {
-  uploadFileToCloudinary,
-  RemoveFileFromCloudinary,
-} from "../utils/cloudinary.js";
+import accessAndRefreshTokenGenrator from "../utils/accessRefreshTokenGenrator.js";
+import { uploadFileToCloudinary, RemoveFileFromCloudinary } from "../utils/cloudinary.js";
+import {AccessTokenCookieOption, RefreshTokenCookieOption} from "../constants.js"
+import {isSpace} from "../utils/customMethods.js"
+
 
 export const sellerRegister = asyncHandler(async (req, res) => {
   // Validate data: Check if all required fields are provided
