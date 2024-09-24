@@ -96,7 +96,7 @@ const address = new mongoose.Schema({
 
 const sellerSchema = new mongoose.Schema(
   {
-    username: {
+    userName: {
       type: String,
       required: [true, "this is required field"],
       unique: [true, "username already Exits!!!"],
@@ -105,7 +105,7 @@ const sellerSchema = new mongoose.Schema(
     fullName: { type: String, required: [true, "this is required field"] },
     password: { type: String, required: [true, "this is required field"] },
     lastLogin: { type: Date, default: null },
-    avtar: { type: String, default:process.env.DEFAULT_USER_AVATAR },
+    avatar: { type: String, default:process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL },
     productlist: [productID],
     orderlist: [orderId],
     repleshOrderList : [repleshOrderId],

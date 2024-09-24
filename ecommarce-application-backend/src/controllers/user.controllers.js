@@ -112,7 +112,7 @@ export const userLogin = asyncHandler(async (req, res) => {
    * return responce
    */
   if(req.userId){
-    throw new ApiError()
+    throw new ApiError(401, "AuthError : User already login, please logout or clear cookies")
   }
   // Check if request body is empty
   if (!req.body) {
@@ -137,13 +137,15 @@ export const userLogin = asyncHandler(async (req, res) => {
   ) {
     throw new ApiError(400, "DataError : No any field is Empty");
   }
-
+  if(isSpace(userName)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
   // Find user by userName
   let searchUser
   try {
     searchUser = await User.findOne({ userName });
   } catch (error) {
-    throw new ApiError
+    throw new ApiError(500, `DbError : ${error.message || "unable to find user"}`)
   }
 
   // Check if user does not exist
@@ -153,7 +155,7 @@ export const userLogin = asyncHandler(async (req, res) => {
 
   // Verify password
   if (!(await searchUser.isPasswordCorrect(password))) {
-    throw new ApiError(400, "Incorrect password");
+    throw new ApiError(400, "DataError : Incorrect password");
   }
 
   if (saveInfo) {
@@ -162,18 +164,18 @@ export const userLogin = asyncHandler(async (req, res) => {
     try {
       tokens = await accessAndRefreshTokenGenrator(searchUser);
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError :${error.message || "Unable to generate user tokens"}`)
     }
     if(!tokens){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not generated")
     }
 
     const {accessToken, refreshToken} = tokens
     if([accessToken, refreshToken].some(field => field === undefined)){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not available")
     }
     if([accessToken, refreshToken].some(field => field?.toString().trim() === "")){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not available")
     }
 
     // Update user details with last login time and refresh token
@@ -190,10 +192,10 @@ export const userLogin = asyncHandler(async (req, res) => {
         { new: true }
       ).select("-password");
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError :${error.message || "unable to update user"}`)
     }
     if(!updateUser){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User not update")
     }
     // Return success response with cookies and user details
     return res
@@ -203,8 +205,15 @@ export const userLogin = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, updateUser, "successMessage : User Login successfully"));
   } else {
     // Generate access token
-    const accessToken = await searchUser.generateAccessToken();
-
+    let accessToken
+    try {
+      accessToken = await searchUser.generateAccessToken();
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to generated User access Token"}`)
+    }
+    if(!accessToken){
+      throw new ApiError(500, "DbError : User Token not generated")
+    }
     // Update user details with last login time and remove refresh token
     let updateUser
     try {
@@ -219,10 +228,10 @@ export const userLogin = asyncHandler(async (req, res) => {
         { new: true }
       ).select("-password -refreshToken");
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError : ${error.message || "Unable to update user"}`)
     }
     if(!updateUser){
-
+      throw new ApiError(500, "DbError :  User not updated")
     }
     // Return success response with cookie and user details
     return res
@@ -243,7 +252,7 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
    * return responce
    */
   if(req.userId){
-    throw new ApiError
+    throw new ApiError(401, "AuthError : User already login, please logout or clear cookies")
   }
   // Check if request body is empty
   if (!req.body) {
@@ -268,25 +277,25 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
   ) {
     throw new ApiError(400, "DataError : No any field is Empty");
   }
-
+  
+  if(isSpace(email)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
   // Find user by email
   let searchUser
   try {
     searchUser = await User.findOne({ email });
   } catch (error) {
-    throw new ApiError
+    throw new ApiError(500, `DbError : ${error.message || "unable to find user"}`)
   }
 
-  // Check if user does not exist
   if (!searchUser) {
     throw new ApiError(409, "DataError : User not exists");
   }
-  if(searchUser.fullName !== fullName){
-    throw new ApiError()
-  }
+
   // Verify password
   if (!(await searchUser.isPasswordCorrect(password))) {
-    throw new ApiError(400, "Incorrect password");
+    throw new ApiError(400, "DataError : Incorrect password");
   }
 
   if (saveInfo) {
@@ -295,18 +304,18 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
     try {
       tokens = await accessAndRefreshTokenGenrator(searchUser);
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError :${error.message || "Unable to generate user tokens"}`)
     }
     if(!tokens){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not generated")
     }
 
     const {accessToken, refreshToken} = tokens
     if([accessToken, refreshToken].some(field => field === undefined)){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not available")
     }
     if([accessToken, refreshToken].some(field => field?.toString().trim() === "")){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User Token not available")
     }
 
     // Update user details with last login time and refresh token
@@ -323,10 +332,10 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
         { new: true }
       ).select("-password");
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError :${error.message || "Unable to update user"}`)
     }
     if(!updateUser){
-      throw new ApiError()
+      throw new ApiError(500, "DbError : User not update")
     }
     // Return success response with cookies and user details
     return res
@@ -336,8 +345,15 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, updateUser, "successMessage : User Login successfully"));
   } else {
     // Generate access token
-    const accessToken = await searchUser.generateAccessToken();
-
+    let accessToken
+    try {
+      accessToken = await searchUser.generateAccessToken();
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to generated User access Token"}`)
+    }
+    if(!accessToken){
+      throw new ApiError(500, "DbError : User Token not generated")
+    }
     // Update user details with last login time and remove refresh token
     let updateUser
     try {
@@ -352,10 +368,10 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
         { new: true }
       ).select("-password -refreshToken");
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `DbError : ${error.message || "Unable to update user"}`)
     }
     if(!updateUser){
-
+      throw new ApiError(500, "DbError :  User not updated")
     }
     // Return success response with cookie and user details
     return res
@@ -378,10 +394,10 @@ export const logOutUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "LoginError : UserId not available")
   }
   if(!req.params?.userId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
   if(req.params.userId !== req.userId){
-
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
   try {
     // Clear refresh token in database
@@ -391,7 +407,7 @@ export const logOutUser = asyncHandler(async (req, res) => {
       },
     }).select("-password");
   } catch (error) {
-    throw ApiError(500, error?.message || "Server not connected with database");
+    throw new ApiError(500, `DbError : ${error.message || "unable to update user"}`)
   }
 
   // Return success response and clear cookies
@@ -412,18 +428,25 @@ export const setAvtar = asyncHandler(async (req, res) => {
    * save cloudinary url in db
    * return responce
    */
+  
   // Check if user is authenticated
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
   if(!req.file){
-    throw new ApiError()
+    throw new ApiError(400, "MulterError : file path not received")
   }
   const localAvatarPath = req.file?.path;
 
   // Check if file path exists
   if (!localAvatarPath) {
-    throw new ApiError(404, "File not exits");
+    throw new ApiError(404, "MulterError : File path not available");
   }
 
   // Upload file to Cloudinary
@@ -431,31 +454,31 @@ export const setAvtar = asyncHandler(async (req, res) => {
   try {
     response = await uploadFileToCloudinary(localAvatarPath);
   } catch (error) {
-    throw new ApiError()
+    throw new ApiError(500, `CloudinaryError :${error.message || "Unable to upload file on cloudinary"}`)
   }
 
   // Check if file upload was successful
   if (!response) {
-    throw new ApiError(500, "file not uploaded successfully!!");
+    throw new ApiError(500, "CloudinaryError : file not uploaded");
   }
   let searchUser
   try {
     searchUser = await User.findById(req.userId).select("-Password")
   } catch (error) {
-    throw new ApiError
+    throw new ApiError(500, `DbError :${error.message || "unable to find user"}`)
   }
   if(!searchUser){
-    throw new ApiError
+    throw new ApiError(500, "DbError : User not found")
   }
   if(searchUser.avatar !== process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL){
     let removeAvatarResponse
     try {
       removeAvatarResponse = await RemoveFileFromCloudinary(searchUser.avatar)
     } catch (error) {
-      throw new ApiError()
+      throw new ApiError(500, `CloudinaryError :${error.message || "Unable to remove file on cloudinary"}`)
     }
     if(!removeAvatarResponse){
-      throw new ApiError
+      throw new ApiError(500, "CloudinaryError : file not removed")
     }
   }
 
@@ -472,10 +495,10 @@ export const setAvtar = asyncHandler(async (req, res) => {
       { new: true }
     ).select("-password");
   } catch (error) {
-    throw new ApiError(500, error?.message || "Server DB connection error");
+    throw new ApiError(500, `DbError :${error.message || "unable to update user"}`)
   }
   if(!updateUser){
-    throw new ApiError
+    throw new ApiError(500, "DbError : User not update")
   }
   // Return success response with updated user avatar
   return res
@@ -491,56 +514,61 @@ export const removeAvatar = asyncHandler(async (req, res) => {
    * remove Avatar from cloudinary
    * return responce
    */
-    // Check if user is authenticated
-    if (!req.userId) {
-      throw new ApiError(400, "User not Authenticate");
-    }
-    let searchUser
-    try {
-      searchUser = await User.findById(req.userId).select("-Password")
-    } catch (error) {
-      throw new ApiError
-    }
-    if(!searchUser){
-      throw new ApiError
-    }
-    if(searchUser.avatar === process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL){
-      throw new ApiError
-    }
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+  let searchUser
+  try {
+    searchUser = await User.findById(req.userId).select("-Password")
+  } catch (error) {
+    throw new ApiError(500, `DbError :${error.message || "unable to find user"}`)
+  }
+  if(!searchUser){
+    throw new ApiError(500, "DbError : User not found")
+  }
+  if(searchUser.avatar === process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL){
+    throw new ApiError(409, "DataError : Default Avatar not allowed to removed")
+  }
 
-    let removeAvatarResponse
-    try {
-      removeAvatarResponse = await RemoveFileFromCloudinary(searchUser.avatar)
-    } catch (error) {
-      throw new ApiError()
-    }
-    if(!removeAvatarResponse){
-      throw new ApiError
-    }
+  let removeAvatarResponse
+  try {
+    removeAvatarResponse = await RemoveFileFromCloudinary(searchUser.avatar)
+  } catch (error) {
+    throw new ApiError(500, `CloudinaryError :${error.message || "Unable to remove file on cloudinary"}`)
+  }
+  if(!removeAvatarResponse){
+    throw new ApiError(500, "CloudinaryError : file not removed")
+  }
     
-  
-    let updateUser
-    try {
-      // Update user avatar URL in database
-      updateUser = await User.findByIdAndUpdate(
-        searchUser._id,
-        {
-          $set: {
-            avatar: process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL,
-          },
+  let updateUser
+  try {
+    // Update user avatar URL in database
+    updateUser = await User.findByIdAndUpdate(
+      searchUser._id,
+      {
+        $set: {
+          avatar: process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL,
         },
-        { new: true }
-      ).select("-password");
-    } catch (error) {
-      throw new ApiError(500, error?.message || "Server DB connection error");
-    }
-    if(!updateUser){
-      throw new ApiError
-    }
-    // Return success response with updated user avatar
-    return res
-    .status(200)
-    .json(new ApiResponse(200, updateUser, "UserAvatar remove successfully"));
+      },
+      { new: true }
+    ).select("-password");
+  } catch (error) {
+    throw new ApiError(500, `DbError :${error.message || "unable to update user"}`)
+  }
+  if(!updateUser){
+    throw new ApiError(500, "DbError : User not update")
+  }
+  // Return success response with updated user avatar
+  return res
+  .status(200)
+  .json(new ApiResponse(200, updateUser, "UserAvatar remove successfully"));
 })
 
 export const updateUserData = asyncHandler(async (req, res) => {
@@ -552,31 +580,35 @@ export const updateUserData = asyncHandler(async (req, res) => {
    * search and update user
    * return responce with new data
    */
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
-  if(!req.params.userId){
-    throw new ApiError()
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-  if(req.userId !== req.params?.userId){
-    throw new ApiError()
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
   // Check if request body is empty
   if (!req.body) {
-    throw new ApiError(400, "No data received");
+    throw new ApiError(400, "DataError : No data received");
   }
 
   // Destructure email and fullName from request body
   const {fullName, email} = req.body;
 
   // Validate that email and fullName are provided and not empty
-  if ([fullName, email].some(field = field === undefined)){
-    throw new ApiError()
+  if ([fullName, email].some(field => field === undefined)){
+    throw new ApiError(404, "DataError : All fields are required");
   }
   if ([fullName, email].some(field => field?.toString().trim() === "")) {
-    throw new ApiError(400, "These fields are required");
+    throw new ApiError(400, "DataError : No any field is Empty");
   }
-
+  
+  if(isSpace(email)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
   let updateUser
   try {
     // Update user data by ID and return the updated document
@@ -590,12 +622,12 @@ export const updateUserData = asyncHandler(async (req, res) => {
       { new: true }
     ).select("-password -refreshToken");
   } catch (error) {
-    throw new ApiError(500, "User data not updated");
+    throw new ApiError(500, `DbError : ${error.message || "unable to update user"}`)
   }
 
   // Check if user data was not updated in the database
   if (!updateUser) {
-    throw new ApiError(500, "User data not updated in Database");
+    throw new ApiError(500, "DbError : User not update")
   }
 
   // Return success response with updated user data
@@ -613,14 +645,14 @@ export const changePassword = asyncHandler(async (req, res) => {
    */
 
   // Check if user is authenticated
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
   if(!req.params?.userId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-  if(req.params?.userId !== req.userId){
-
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
 
   // Check if request body is empty
@@ -629,11 +661,11 @@ export const changePassword = asyncHandler(async (req, res) => {
   }
    const {oldPassword, newPassword} = req.body
    if([oldPassword, newPassword].some(field => field === undefined)){
-    throw new ApiError
+    throw new ApiError(404, "DataError : All fields are required");
    }
    if([oldPassword, newPassword].some(field => field?.toString().trim() === "")){
-    throw new ApiError
-   }
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
   // Find user by ID and exclude password and refreshToken from the result
   let userData
   try {
@@ -641,20 +673,20 @@ export const changePassword = asyncHandler(async (req, res) => {
       "-password -refreshToken"
     );
   } catch (error) {
-    throw new ApiError
+    throw new ApiError(500, `DbError : ${error.message || "unable to find user"}`)
   }
 
   // Check if user data retrieval failed
   if (!userData) {
-    throw new ApiError(500, "User Data retrieved failed");
+    throw new ApiError(409, "DataError : User not exists");
   }
 
   try {
     // Set new password and save user data
     userData.password = newPassword;
-    userData.save({ validateBeforeSave: false });
+    await userData.save({ validateBeforeSave: false });
   } catch (error) {
-    throw new ApiError(500, error.message || "User password not change");
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update password"}`);
   }
 
   // Return success response
@@ -675,28 +707,28 @@ export const deleteUser = asyncHandler(async (req, res) => {
    * clear cookies return responce
    */
 
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
   if(!req.params?.userId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-  if(req.params?.userId !== req.userId){
-    throw new ApiError()
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
 
-  let deleteUser
   try {
     // Attempt to delete the user by ID
-    deleteUser = await User.findByIdAndDelete(req.userId);
+    await User.findByIdAndDelete(req.userId);
   } catch (error) {
     // Handle any errors that occur during deletion
-    throw new ApiError(500, error.message || "Failed to delete user");
+    throw new ApiError(500, `DbError : ${error.message || "Unable to delete user"}`);
   }
 
   // Check if the user was not deleted from the database
-  if (!deleteUser) {
-    throw new ApiError(500, "Failed to delete user from Database");
+  if (await User.findById(req.userId)){
+    throw new ApiError(500, "DbError : User not deleted");
   }
 
   // Return success response indicating user was deleted
@@ -718,18 +750,19 @@ export const addAddress = asyncHandler(async (req, res) => {
    * return responce
    */
 
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
   if(!req.params?.userId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-  if(req.params?.userId !== req.userId){
-    throw new ApiError()
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
 
   if(!req.body){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : No any data received");
   }
 
   const { name, area, city, state, pincode, conutry } = req.body;
@@ -739,23 +772,23 @@ export const addAddress = asyncHandler(async (req, res) => {
     [name, area, city, state, pincode, conutry ].some(
       (field) => field === undefined )
   ) {
-    throw new ApiError(400, "All fields are required");
+    throw new ApiError(404, "DataError : All fields are required");
   }
   if (
     [name, area, city, state, pincode, conutry ].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
-    throw new ApiError(400, "All fields are required");
+    throw new ApiError(400, "DataError : No any field is Empty");
   }
   let userData
   try {
     userData = await User.findById(req.userId).select("-password -refreshToken")
   } catch (error) {
-    throw new ApiError
+    throw new ApiError(500, `DbError : ${error.message || "unable to find user"}`)
   }
   if(!userData){
-    throw new ApiError()
+    throw new ApiError(409, "DataError : User not exists");
   }
    const addressObject = {
     name, area, city, state, pincode, conutry 
@@ -766,10 +799,10 @@ export const addAddress = asyncHandler(async (req, res) => {
       $push : {address : addressObject}
     })
   } catch (error) {
-    throw new ApiError(500, error || "Address not set");
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update user"}`);
   }
   if(!updateUser){
-    throw new ApiError()
+    throw new ApiError(500, "DbError : User not updated")
   }
 
   // Return success response with updated user data
@@ -787,41 +820,42 @@ export const removeAddress = asyncHandler(async (req, res) => {
      * return responce
      */
 
-  if (!req.userId) {
-    throw new ApiError(400, "User not Authenticate");
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
   if(!req.params?.userId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-  if(req.params?.userId !== req.userId){
-    throw new ApiError()
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
   if(!req.params?.addressId){
-    throw new ApiError()
+    throw new ApiError(404, "DataError : AddressId not received from params")
   }
 
   let searchUser
   try {
     searchUser = await User.findById(req.userId).select("-password -refreshToken")
   } catch (error) {
-    throw new ApiError()
+    throw new ApiError(500, `DbError : ${error.message || "unable to find user"}`)
   }
   if(!searchUser){
-    throw new ApiError()
+    throw new ApiError(409, "DataError : User not exists");
   }
   
   if(!(searchUser.address.find(objectId => objectId._id?.toString() === req.params?.addressId))){
-    throw new ApiError()
+    throw new ApiError(404, "DataEror : Address not found")
   }
   try {
     const newAddressArray = searchUser.address.filter(objectId => objectId._id?.toString() !== req.params?.addressId)
     searchUser.address = newAddressArray
     await searchUser.save({validateBeforeSave: false})
   } catch (error) {
-    throw new ApiError()
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update address array"}`)
   }
   if(searchUser.address.find(objectId => objectId._id?.toString() === req.params?.addressId)){
-    throw new ApiError()
+    throw new ApiError(500, "DbError : address not removed")
   }
   return res
   .status(200)

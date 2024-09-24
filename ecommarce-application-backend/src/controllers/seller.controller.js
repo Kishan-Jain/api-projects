@@ -25,406 +25,839 @@ import {isSpace} from "../utils/customMethods.js"
 
 
 export const sellerRegister = asyncHandler(async (req, res) => {
-  // Validate data: Check if all required fields are provided
-  const { username, fullName, email, password } = req.body;
+  /**
+   * validate seller not login already
+   * varidate received data from body
+   * make new seller and save in seller db collection
+   * validate create seller
+   * return responce with new seller
+   */
+
+  if(req.userId){
+    throw new ApiError(400, "AuthError : seller already login, please logout or clear cookies")
+  }
+  // Check if request body is empty
+  if (!req.body) {
+    throw new ApiError(404, "DataError : No any data received");
+  }
+
+  // Destructure seller details from request body
+  const { userName, fullName, email, password } = req.body;
+
+  // Check if any field is empty
   if (
-    [username, fullName, email, password].some((field) => field?.trim() === "")
+    [userName, fullName, email, password].some((field) => field === undefined)
   ) {
-    throw new ApiError(400, "All fields are necessary");
+    throw new ApiError(404, "DataError : All fields are required");
+  }
+  
+  if (
+    [userName, fullName, email, password].some((field) => field?.trim() === "")
+  ) {
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
+  if([userName, email].some(field => isSpace(field) === true)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
+  // Check if userName already exists
+  if (await Seller.findOne({ userName })) {
+    throw new ApiError(409, "DataError : userName already exists");
   }
 
-  // Check if the user already exists
-  if (await Seller.findOne({ username })) {
-    throw new ApiError(400, "User already exists");
+  // Create new seller
+  let newSeller
+  try {
+    newSeller = await Seller.create({
+      userName,
+      fullName,
+      email,
+      password,
+    });
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to create new seller"}`)
   }
 
-  // Create a new seller
-  const newSeller = await Seller.create({
-    username,
-    fullName,
-    email,
-    password,
-  });
+  if(!newSeller){
+    throw new ApiError(500, "DbError : New seller not created")
+  }
 
-  // Retrieve the newly created seller (excluding sensitive fields)
-  const newCreatedSeller = await Seller.findById(newSeller._id).select(
-    "-password -_id -__v"
-  );
+  // Retrieve newly created seller without password and refreshToken
+  let newCreatedSeller
+  try {
+    newCreatedSeller = await Seller.findById(newUser._id).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find new created seller"}`)
+  }
 
-  // Handle errors if seller creation fails
+  // Check if seller creation failed
   if (!newCreatedSeller) {
-    throw new ApiError(500, "Unfortunately, seller was not created");
+    throw new ApiError(500, "DbError : created seller not found");
   }
 
-  // Return success response
+  // Return success response with new seller data
   return res
     .status(201)
-    .json(
-      new ApiResponse(200, newCreatedSeller, "Seller created successfully")
-    );
+    .json(new ApiResponse(200, newCreatedSeller, "successMessage : Seller registered successfully"));
 });
 
 export const sellerLogin = asyncHandler(async (req, res) => {
-  // Retrieve data from the request body
-  const { username, password, saveInfo } = req.body;
+  /**
+   * check seller already login
+   * validate data from body
+   * validate data from database
+   * genrete access, refreshtoken
+   * save refresh token in db
+   * store access, refreshtoken in cookie
+   * return responce
+   */
+  if(req.userId){
+    throw new ApiError(401, "AuthError : Seller already login, please logout or clear cookies")
+  }
+  // Check if request body is empty
+  if (!req.body) {
+    throw new ApiError(404, "DataError : No any data received");
+  }
 
-  // Check if any required fields are empty
+  // Destructure login details from request body
+  const { userName, password, saveInfo } = req.body;
+
+  // Check if any field is empty
   if (
-    [username, password, saveInfo].some(
+    [userName, password, saveInfo].some(
+      (field) => field === undefined
+    )
+  ) {
+    throw new ApiError(404, "DataError : All fields are required");
+  }
+  if (
+    [userName, password, saveInfo].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
-    throw new ApiError(400, "All fields are required");
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
+  if(isSpace(userName)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
+  // Find seller by userName
+  let searchSeller
+  try {
+    searchSeller = await Seller.findOne({ userName });
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to find seller"}`)
   }
 
-  // Find the seller by username
-  const searchSeller = await Seller.findOne({ username });
-
+  // Check if seller does not exist
   if (!searchSeller) {
-    throw new ApiError(409, "Seller does not exist");
+    throw new ApiError(409, "DataError : Seller not exists");
   }
 
-  // Verify the password
+  // Verify password
   if (!(await searchSeller.isPasswordCorrect(password))) {
-    throw new ApiError(400, "Incorrect password");
+    throw new ApiError(400, "DataError : Incorrect password");
   }
 
   if (saveInfo) {
-    // Generate access and refresh tokens
-    const { refreshToken, accessToken } =
-      await accessAndRefreshTokenGenerator(searchSeller);
+    // Generate refresh and access tokens
+    let tokens
+    try {
+      tokens = await accessAndRefreshTokenGenrator(searchSeller);
+    } catch (error) {
+      throw new ApiError(500, `DbError :${error.message || "Unable to generate seller tokens"}`)
+    }
+    if(!tokens){
+      throw new ApiError(500, "DbError : Seller Token not generated")
+    }
 
-    // Update seller details (last login and refresh token)
-    const sellerDetails = await Seller.findByIdAndUpdate(
-      searchSeller._id,
-      {
-        $set: {
-          lastLogin: Date.now(),
-          refreshToken: refreshToken,
+    const {accessToken, refreshToken} = tokens
+    if([accessToken, refreshToken].some(field => field === undefined)){
+      throw new ApiError(500, "DbError : Seller Token not available")
+    }
+    if([accessToken, refreshToken].some(field => field?.toString().trim() === "")){
+      throw new ApiError(500, "DbError : Seller Token not available")
+    }
+
+    // Update seller details with last login time and refresh token
+    let updateSeller
+    try {
+      updateSeller = await Seller.findByIdAndUpdate(
+        searchSeller._id,
+        {
+          $set: {
+            lastLogin: Date.now(),
+            refreshToken,
+          },
         },
-      },
-      { new: true }
-    ).select("-password -refreshToken");
-
-    // Configure options for cookies
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-    console.log("Status: 200 - Login successful");
-
+        { new: true }
+      ).select("-password");
+    } catch (error) {
+      throw new ApiError(500, `DbError :${error.message || "unable to update seller"}`)
+    }
+    if(!updateSeller){
+      throw new ApiError(500, "DbError : Seller not update")
+    }
+    // Return success response with cookies and seller details
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", refreshToken, options)
-      .json(new ApiResponse(200, sellerDetails, "Login successful"));
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
+      .cookie("refreshToken", refreshToken, RefreshTokenCookieOption)
+      .json(new ApiResponse(200, updateSeller, "successMessage : Seller Login successfully"));
   } else {
-    // Generate an access token (without saving refresh token)
-    const accessToken = await searchSeller.generateAccessToken();
-
-    // Update seller details (last login and clear refresh token)
-    const sellerDetails = await Seller.findByIdAndUpdate(
-      searchSeller._id,
-      {
-        $set: {
-          lastLogin: Date.now(),
-          refreshToken: null,
+    // Generate access token
+    let accessToken
+    try {
+      accessToken = await searchSeller.generateAccessToken();
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to generated Seller access Token"}`)
+    }
+    if(!accessToken){
+      throw new ApiError(500, "DbError : Seller Token not generated")
+    }
+    // Update seller details with last login time and remove refresh token
+    let updateSeller
+    try {
+      updateSeller = await Seller.findByIdAndUpdate(
+        searchSeller._id,
+        {
+          $set: {
+            lastLogin: Date.now(),
+            refreshToken: undefined,
+          },
         },
-      },
-      { new: true }
-    ).select("-password -refreshToken");
-
-    // Configure options for cookies
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-    console.log("Status: 200 - Login successful");
-
+        { new: true }
+      ).select("-password -refreshToken");
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to update seller"}`)
+    }
+    if(!updateSeller){
+      throw new ApiError(500, "DbError :  Seller not updated")
+    }
+    // Return success response with cookie and seller details
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
-      .json(new ApiResponse(200, sellerDetails, "Login successful"));
+      .json(new ApiResponse(200, updateSeller, "successMessage : Seller Login successfully"));
+  }
+});
+
+export const sellerLoginWithEmail = asyncHandler(async (req, res) => {
+  /**
+   * check seller already login
+   * validate data from body
+   * validate data from database
+   * genrete access, refreshtoken
+   * save refresh token in db
+   * store access, refreshtoken in cookie
+   * return responce
+   */
+  if(req.userId){
+    throw new ApiError(401, "AuthError : Seller already login, please logout or clear cookies")
+  }
+  // Check if request body is empty
+  if (!req.body) {
+    throw new ApiError(404, "DataError : No any data received");
+  }
+
+  // Destructure login details from request body
+  const { email, fullName, password, saveInfo } = req.body;
+
+  // Check if any field is empty
+  if (
+    [email, fullName, password, saveInfo].some(
+      (field) => field === undefined
+    )
+  ) {
+    throw new ApiError(404, "DataError : All fields are required");
+  }
+  if (
+    [email, fullName, password, saveInfo].some(
+      (field) => field?.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
+  
+  if(isSpace(email)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
+  // Find seller by email
+  let searchSeller
+  try {
+    searchSeller = await Seller.findOne({ email });
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to find seller"}`)
+  }
+
+  if (!searchSeller) {
+    throw new ApiError(409, "DataError : Seller not exists");
+  }
+
+  // Verify password
+  if (!(await searchSeller.isPasswordCorrect(password))) {
+    throw new ApiError(400, "DataError : Incorrect password");
+  }
+
+  if (saveInfo) {
+    // Generate refresh and access tokens
+    let tokens
+    try {
+      tokens = await accessAndRefreshTokenGenrator(searchSeller);
+    } catch (error) {
+      throw new ApiError(500, `DbError :${error.message || "Unable to generate seller tokens"}`)
+    }
+    if(!tokens){
+      throw new ApiError(500, "DbError : Seller Token not generated")
+    }
+
+    const {accessToken, refreshToken} = tokens
+    if([accessToken, refreshToken].some(field => field === undefined)){
+      throw new ApiError(500, "DbError : Seller Token not available")
+    }
+    if([accessToken, refreshToken].some(field => field?.toString().trim() === "")){
+      throw new ApiError(500, "DbError : Seller Token not available")
+    }
+
+    // Update seller details with last login time and refresh token
+    let updateSeller
+    try {
+      updateSeller = await Seller.findByIdAndUpdate(
+        searchSeller._id,
+        {
+          $set: {
+            lastLogin: Date.now(),
+            refreshToken,
+          },
+        },
+        { new: true }
+      ).select("-password");
+    } catch (error) {
+      throw new ApiError(500, `DbError :${error.message || "Unable to update seller"}`)
+    }
+    if(!updateSeller){
+      throw new ApiError(500, "DbError : Seller not update")
+    }
+    // Return success response with cookies and seller details
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
+      .cookie("refreshToken", refreshToken, RefreshTokenCookieOption)
+      .json(new ApiResponse(200, updateSeller, "successMessage : Seller Login successfully"));
+  } else {
+    // Generate access token
+    let accessToken
+    try {
+      accessToken = await searchSeller.generateAccessToken();
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to generated Seller access Token"}`)
+    }
+    if(!accessToken){
+      throw new ApiError(500, "DbError : Seller Token not generated")
+    }
+    // Update seller details with last login time and remove refresh token
+    let updateSeller
+    try {
+      updateSeller = await Seller.findByIdAndUpdate(
+        searchSeller._id,
+        {
+          $set: {
+            lastLogin: Date.now(),
+            refreshToken: undefined,
+          },
+        },
+        { new: true }
+      ).select("-password -refreshToken");
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "Unable to update seller"}`)
+    }
+    if(!updateSeller){
+      throw new ApiError(500, "DbError :  Seller not updated")
+    }
+    // Return success response with cookie and seller details
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .json(new ApiResponse(200, updateSeller, "successMessage : Seller Login successfully"));
   }
 });
 
 export const logOutUser = asyncHandler(async (req, res) => {
-  // Check if the user is logged in (verified by auth middleware)
-  // Retrieve the user ID from the middleware
-  // Invalidate the user's refresh token in the database
-  // Remove all cookies related to authentication
+  /**
+   * check seller in login
+   * match userId from params
+   * clear all cookies
+   * return responce
+   */
 
-  // Check if req.userId is available (user is authenticated)
-  if (!req.userId) {
-    throw new ApiError(500, "Authentication middleware did not work properly");
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
-
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
   try {
-    // Invalidate the user's refresh token by setting it to null
-    await User.findByIdAndUpdate(req.userId, {
+    // Clear refresh token in database
+    await Seller.findByIdAndUpdate(req.userId, {
       $set: {
-        refreshToken: null,
+        refreshToken: undefined,
       },
-    }).select("-password"); // Exclude the password field from the response
+    }).select("-password");
   } catch (error) {
-    throw ApiError(
-      500,
-      error?.message || "Server failed to connect to the database"
-    );
+    throw new ApiError(500, `DbError : ${error.message || "unable to update seller"}`)
   }
 
-  // Configure options for clearing cookies
-  const options = {
-    httpOnly: true,
-    secure: true, // Set to true if using HTTPS
-  };
-
-  // Clear the access token and refresh token cookies
+  // Return success response and clear cookies
+  if(cookies["refreshToken"]){
+    res.clearCookie("refreshToken", RefreshTokenCookieOption)
+  }
   return res
     .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User logged out successfully"));
+    .clearCookie("accessToken", AccessTokenCookieOption)
+    .json(new ApiResponse(200, {}, "successMessage : Seller logged out successfully"));
 });
 
 export const setAvtar = asyncHandler(async (req, res) => {
-  // Retrieve user data using req.userId
-  // Retrieve file server path using multer middleware
-  // Upload the file to Cloudinary and save the URL on the user's profile
-
-  // Check if req.userId is available
-  if (!req.userId) {
-    throw new ApiError(500, "Seller ID not received");
+  /**
+   * check seller is login
+   * check file is locally uploded
+   * upload file in cloudinary
+   * save cloudinary url in db
+   * return responce
+   */
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
-
-  // Check if a file was received
-  if (!req.file) {
-    throw new ApiError(400, "File not received");
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
   }
-
-  // Get the local path of the uploaded avatar
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+  if(!req.file){
+    throw new ApiError(400, "MulterError : file path not received")
+  }
   const localAvatarPath = req.file?.path;
 
+  // Check if file path exists
   if (!localAvatarPath) {
-    throw new ApiError(404, "File path not found");
+    throw new ApiError(404, "MulterError : File path not available");
   }
 
-  // Upload the avatar to Cloudinary
-  const response = await uploadFileToCloudinary(localAvatarPath);
+  // Upload file to Cloudinary
+  let response
+  try {
+    response = await uploadFileToCloudinary(localAvatarPath);
+  } catch (error) {
+    throw new ApiError(500, `CloudinaryError : ${error.message || "Unable to upload file on cloudinary"}`)
+  }
 
+  // Check if file upload was successful
   if (!response) {
-    throw new ApiError(500, "Unfortunately, file upload failed");
+    throw new ApiError(500, "CloudinaryError : file not uploaded");
   }
-
-  // Retrieve seller data (excluding password and refreshToken)
-  const sellerData = await Seller.findById(req.userId).select(
-    "-password -refreshToken"
-  );
-
-  if (!sellerData) {
-    throw new ApiError(409, "Invalid seller ID");
+  let searchSeller
+  try {
+    searchSeller = await Seller.findById(req.userId).select("-Password")
+  } catch (error) {
+    throw new ApiError(500, `DbError :${error.message || "unable to find seller"}`)
   }
-
-  // If the seller already has an avatar, delete the old one from Cloudinary
-  if (sellerData.avatar) {
+  if(!searchSeller){
+    throw new ApiError(500, "DbError : Seller not found")
+  }
+  if(searchSeller.avatar !== process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL){
+    let removeAvatarResponse
     try {
-      await RemoveFileToCloudinary(sellerData.avatar);
+      removeAvatarResponse = await RemoveFileFromCloudinary(searchSeller.avatar)
     } catch (error) {
-      throw new ApiError(500, "Failed to delete seller avatar");
+      throw new ApiError(500, `CloudinaryError :${error.message || "Unable to remove file on cloudinary"}`)
+    }
+    if(!removeAvatarResponse){
+      throw new ApiError(500, "CloudinaryError : file not removed")
     }
   }
 
-  // Update the seller's avatar URL in the database
+  let updateSeller
   try {
-    await Seller.findByIdAndUpdate(
-      req.userId,
+    // Update seller avatar URL in database
+    updateSeller = await Seller.findByIdAndUpdate(
+      searchSeller._id,
       {
         $set: {
           avatar: response.url,
         },
       },
       { new: true }
-    );
+    ).select("-password");
   } catch (error) {
-    throw new ApiError(500, error?.message || "Avatar update failed");
+    throw new ApiError(500, `DbError :${error.message || "unable to update seller"}`)
   }
-
-  // Retrieve the updated user avatar
-  const userAvatar = await Seller.findById(req.userId).select(
-    "-password -refreshToken"
-  );
-
-  return res.status(200).json(new ApiResponse(200, { userAvatar }, ""));
+  if(!updateSeller){
+    throw new ApiError(500, "DbError : Seller not update")
+  }
+  // Return success response with updated seller avatar
+  return res
+  .status(200)
+  .json(new ApiResponse(200, updateSeller, "UserAvatar set successfully"));
 });
 
-export const updateSellerData = asyncHandler(async (req, res) => {
-  // seller Id
-  // seller new data -> email, fullName
-  // Check if user is authenticated
-  if (!req.userId) {
-    throw new ApiError(400, "Seller not Authenticate");
+export const removeAvatar = asyncHandler(async (req, res) => {
+  /**
+   * check seller login
+   * check avatar is not default
+   * set defalt avatar in Seller db
+   * remove Avatar from cloudinary
+   * return responce
+   */
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+  let searchSeller
+  try {
+    searchSeller = await Seller.findById(req.userId).select("-Password")
+  } catch (error) {
+    throw new ApiError(500, `DbError :${error.message || "unable to find seller"}`)
+  }
+  if(!searchSeller){
+    throw new ApiError(500, "DbError : Seller not found")
+  }
+  if(searchSeller.avatar === process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL){
+    throw new ApiError(409, "DataError : Default Avatar not allowed to removed")
+  }
+
+  let removeAvatarResponse
+  try {
+    removeAvatarResponse = await RemoveFileFromCloudinary(searchSeller.avatar)
+  } catch (error) {
+    throw new ApiError(500, `CloudinaryError :${error.message || "Unable to remove file on cloudinary"}`)
+  }
+  if(!removeAvatarResponse){
+    throw new ApiError(500, "CloudinaryError : file not removed")
+  }
+    
+  let updateSeller
+  try {
+    // Update seller avatar URL in database
+    updateSeller = await Seller.findByIdAndUpdate(
+      searchSeller._id,
+      {
+        $set: {
+          avatar: process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL,
+        },
+      },
+      { new: true }
+    ).select("-password");
+  } catch (error) {
+    throw new ApiError(500, `DbError :${error.message || "unable to update seller"}`)
+  }
+  if(!updateSeller){
+    throw new ApiError(500, "DbError : Seller not update")
+  }
+  // Return success response with updated seller avatar
+  return res
+  .status(200)
+  .json(new ApiResponse(200, updateSeller, "UserAvatar remove successfully"));
+})
+
+export const updateUserData = asyncHandler(async (req, res) => {
+  /**
+   * check seller is login
+   * check userid in params and validate its
+   * check data received from body
+   * validate data
+   * search and update seller
+   * return responce with new data
+   */
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
   // Check if request body is empty
   if (!req.body) {
-    throw new ApiError(400, "No data received");
+    throw new ApiError(400, "DataError : No data received");
   }
 
   // Destructure email and fullName from request body
-  const [email, fullName] = req.body;
+  const {fullName, email} = req.body;
 
   // Validate that email and fullName are provided and not empty
-  if ([email, fullName].some((field) => field?.trim() === "")) {
-    throw new ApiError(400, "These fields are required");
+  if ([fullName, email].some(field => field === undefined)){
+    throw new ApiError(404, "DataError : All fields are required");
   }
-
+  if ([fullName, email].some(field => field?.toString().trim() === "")) {
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
+  
+  if(isSpace(email)){
+    throw new ApiError(400, "DataError : Invalid fields")
+  }
+  let updateSeller
   try {
     // Update seller data by ID and return the updated document
-    const updatedSeller = await Seller.findByIdAndUpdate(
+    updateSeller = await Seller.findByIdAndUpdate(
       req.userId,
       {
         $set: {
-          email,
-          fullName,
+          fullName, email
         },
       },
       { new: true }
     ).select("-password -refreshToken");
   } catch (error) {
-    throw new ApiError(500, "Seller data not updated");
+    throw new ApiError(500, `DbError : ${error.message || "unable to update seller"}`)
   }
 
   // Check if seller data was not updated in the database
-  if (!updatedSeller) {
-    throw new ApiError(500, "Seller data not updated in Database");
+  if (!updateSeller) {
+    throw new ApiError(500, "DbError : Seller not update")
   }
 
   // Return success response with updated seller data
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, updatedSeller, "Seller data updated successfully")
-    );
-});
-
-export const updateSellerPassword = asyncHandler(async (req, res) => {
-  // seller, sellerId (authentication not required)
-  // match seller details
-  // old password
-  // match password
-  // set new password
-  // return data
-
-  // Check if request body is empty
-  if (!req.body) {
-    throw new ApiError(400, "No any Data received");
-  }
-
-  // Destructure sellerId, oldPassword, and newPassword from request body
-  const [sellerId, oldPassword, newPassword] = req.body;
-
-  // Validate that all fields are provided and not empty
-  if (
-    [sellerId, oldPassword, newPassword].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields is required");
-  }
-
-  // Find seller by ID and exclude refreshToken from the result
-  const sellerData = await Seller.findById({ _id: sellerId }).select(
-    "-refreshToken"
-  );
-
-  // Check if seller data exists
-  if (!sellerData) {
-    throw new ApiError(409, "Invalid sellerId Or SellerId Not Exits");
-  }
-
-  try {
-    // Check if the old password is correct
-    const checkOldPassword = await sellerData.isPasswordCorrect(oldPassword);
-  } catch (error) {
-    throw new ApiError(500, "Password checking failed");
-  }
-  if (!checkOldPassword) {
-    throw new ApiError(409, "Incorrect Old password");
-  }
-
-  try {
-    // Set new password and save seller data
-    sellerData.password = newPassword;
-    sellerData.save({ validateBeforeSave: false });
-  } catch (error) {
-    throw new ApiError(500, error.message || "Failed to Update new password");
-  }
-
-  // Return success response
-  return res.status(200).json(200, {}, "Password updated successfully");
+    .json(new ApiResponse(200, updateSeller, "Seller data updated successfully"));
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
-  // seller login required
-  // seller id
-  // body - newPassword
-  // set password
+  /**
+   * check seller is login
+   * check data received from body
+   * varify old password and update new password 
+   * clear all cookies and return responce
+   */
 
-  // Check if user is authenticated
-  if (!req.userId) {
-    throw new ApiError(400, "Seller not Authenticate");
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
   }
 
   // Check if request body is empty
   if (!req.body) {
     throw new ApiError(400, "No Data received");
   }
-
+   const {oldPassword, newPassword} = req.body
+   if([oldPassword, newPassword].some(field => field === undefined)){
+    throw new ApiError(404, "DataError : All fields are required");
+   }
+   if([oldPassword, newPassword].some(field => field?.toString().trim() === "")){
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
   // Find seller by ID and exclude password and refreshToken from the result
-  const sellerData = await Seller.findById(req.userId).select(
-    "-password -refreshToken"
-  );
+  let userData
+  try {
+    userData = await Seller.findById(req.userId).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to find seller"}`)
+  }
 
   // Check if seller data retrieval failed
-  if (!sellerData) {
-    throw new ApiError(500, "Seller Data retrieved failed");
+  if (!userData) {
+    throw new ApiError(409, "DataError : Seller not exists");
   }
 
   try {
     // Set new password and save seller data
-    sellerData.password = newPassword;
-    sellerData.save({ validateBeforeSave: false });
+    userData.password = newPassword;
+    await userData.save({ validateBeforeSave: false });
   } catch (error) {
-    throw new ApiError(500, error.message || "Seller password not change");
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update password"}`);
   }
 
   // Return success response
+  if(cookies["refreshToken"]){
+    res.clearCookie("refreshToken", RefreshTokenCookieOption)
+  }
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password Change successfully"));
+    .clearCookie("accessToken", AccessTokenCookieOption)
+    .json(new ApiResponse(200, {}, "successMessage : Password Change successfully"));
 });
 
-export const deleteSeller = asyncHandler(async (req, res) => {
-  // seller id
-  // delete
-  // Check if user is authenticated
-  if (!req.userId) {
-    throw new ApiError(400, "Seller not Authenticate");
+export const deleteUser = asyncHandler(async (req, res) => {
+  /**
+   * check seller login
+   * match seller id from params
+   * delete seller
+   * clear cookies return responce
+   */
+
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
   }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+
   try {
     // Attempt to delete the seller by ID
-    const deletedSeller = await Seller.findByIdAndDelete(req.userId);
+    await Seller.findByIdAndDelete(req.userId);
   } catch (error) {
     // Handle any errors that occur during deletion
-    throw new ApiError(500, error.message || "Failed to delete seller");
+    throw new ApiError(500, `DbError : ${error.message || "Unable to delete seller"}`);
   }
 
   // Check if the seller was not deleted from the database
-  if (!deletedSeller) {
-    throw new ApiError(500, "Failed to delete seller from Database");
+  if (await Seller.findById(req.userId)){
+    throw new ApiError(500, "DbError : Seller not deleted");
   }
 
   // Return success response indicating seller was deleted
+  if(cookies["refreshToken"]){
+    res.clearCookie("refreshToken", RefreshTokenCookieOption)
+  }
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Seller Successfully Deleted"));
+    .clearCookie("accessToken", AccessTokenCookieOption)
+    .json(new ApiResponse(200, {}, "SuccessMessage : Seller Deleted successfully"));
 });
+
+export const addAddress = asyncHandler(async (req, res) => {
+  /**
+   * check seller is login
+   * match userId from params
+   * check data received from body
+   * make address object and push in seller address array
+   * return responce
+   */
+
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+
+  if(!req.body){
+    throw new ApiError(404, "DataError : No any data received");
+  }
+
+  const { name, area, city, state, pincode, conutry } = req.body;
+
+  // Check if any field is empty
+  if (
+    [name, area, city, state, pincode, conutry ].some(
+      (field) => field === undefined )
+  ) {
+    throw new ApiError(404, "DataError : All fields are required");
+  }
+  if (
+    [name, area, city, state, pincode, conutry ].some(
+      (field) => field?.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(400, "DataError : No any field is Empty");
+  }
+  let userData
+  try {
+    userData = await Seller.findById(req.userId).select("-password -refreshToken")
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to find seller"}`)
+  }
+  if(!userData){
+    throw new ApiError(409, "DataError : Seller not exists");
+  }
+   const addressObject = {
+    name, area, city, state, pincode, conutry 
+   }
+   let updateSeller
+  try {
+    updateSeller = await Seller.findByIdAndUpdate(userData._id, {
+      $push : {address : addressObject}
+    })
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update seller"}`);
+  }
+  if(!updateSeller){
+    throw new ApiError(500, "DbError : Seller not updated")
+  }
+
+  // Return success response with updated seller data
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updateSeller, "successMessage: Address added sussfully"));
+});
+
+export const removeAddress = asyncHandler(async (req, res) => {
+  /**
+     * check seller is login
+     * check userId and addressId from params
+     * serch seller
+     * search address and remove address
+     * return responce
+     */
+
+  // Check if seller is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "LoginError : UserId not available")
+  }
+  if(!req.params?.userId){
+    throw new ApiError(404, "DataError : UserId not received from params")
+  }
+  if(req.params.userId !== req.userId){
+    throw new ApiError(409, "AuthError : Unaurthorize access")
+  }
+  if(!req.params?.addressId){
+    throw new ApiError(404, "DataError : AddressId not received from params")
+  }
+
+  let searchSeller
+  try {
+    searchSeller = await Seller.findById(req.userId).select("-password -refreshToken")
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to find seller"}`)
+  }
+  if(!searchSeller){
+    throw new ApiError(409, "DataError : Seller not exists");
+  }
+  
+  if(!(searchSeller.address.find(objectId => objectId._id?.toString() === req.params?.addressId))){
+    throw new ApiError(404, "DataEror : Address not found")
+  }
+  try {
+    const newAddressArray = searchSeller.address.filter(objectId => objectId._id?.toString() !== req.params?.addressId)
+    searchSeller.address = newAddressArray
+    await searchSeller.save({validateBeforeSave: false})
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update address array"}`)
+  }
+  if(searchSeller.address.find(objectId => objectId._id?.toString() === req.params?.addressId)){
+    throw new ApiError(500, "DbError : address not removed")
+  }
+  return res
+  .status(200)
+  .json(new ApiResponse(200, searchSeller, "successMessage : address removed successfully"))
+})

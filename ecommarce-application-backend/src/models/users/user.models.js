@@ -105,7 +105,7 @@ const address = new mongoose.Schema({
 
 // mainSchema
 const userSchema = new mongoose.Schema({
-    username: {
+    userName: {
       type: String,
       required: [true, "this is required field"],
       unique: [true, "username already Exits!!!"],
