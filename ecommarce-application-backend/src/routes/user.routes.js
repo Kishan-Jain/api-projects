@@ -6,6 +6,7 @@ import {} from "../middlewares/multer.middleware.js"
 
 // controller
 import { addAddress, changePassword, deleteUser, logOutUser, removeAddress, removeAvatar, setAvtar, updateUserData, userLogin, userLoginWithEmail, userRegister } from "../controllers/user.controller.js"
+import { getAllProductsListByCategoryForUser, getProductDetailsForUser } from "../controllers/product.controller.js";
 const userRouter = Router()
 
 
@@ -23,4 +24,9 @@ userRouter.route("/deleteUser/:userId").delete(isLogin, deleteUser)
 
 userRouter.route("/:userId/addAddress").patch(isLogin, addAddress)
 userRouter.route("/:userId/removeAddress/:addressId").patch(isLogin, removeAddress)
+
+// product utilities
+userRouter.route("/:userId/getAllProductByCategory").get(isLogin, getAllProductsListByCategoryForUser) // use # hashtag for given category id
+// Example : /:userId/getAllProductByCategory#categoryId:categoryId
+userRouter.route("/:userId/getProductDetails/:productId").get(isLogin, getProductDetailsForUser)
 export default userRouter

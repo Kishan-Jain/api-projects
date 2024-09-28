@@ -9,14 +9,14 @@ import jwt from "jsonwebtoken"
 
 export const isLogin = async(req, res, next) => {
     try {
-        if(!(req.cookies?.accessToken && req.headers("Authorization"))){
+        if(!(req.cookies?.accessToken || req.header("Authorization"))){
             throw new ApiError(401, "authError : AccessToken not available, please login again")
         }
-        const accessToken = req.cookies?.accessToken || req.headers("Authorization")?.replace("Bearer", "")
+        const accessToken = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer", "")
         if (!accessToken){
             throw new ApiError(400, "loginError : AccessToken not recieved")
         }
-        const decodeAccessToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET)
+        const decodeAccessToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET_KEY)
 
         if (!decodeAccessToken){
             throw new ApiError(400, "AuthError : AccessToken not Correct")
@@ -32,7 +32,7 @@ export const isLogin = async(req, res, next) => {
 
 export const ifAlreadyLogin = async(req, res, next) => {
     try {
-        if(req.cookies?.accessToken || req.headers("Authorization")){
+        if(req.cookies?.accessToken || req.header("Authorization")){
             throw new ApiError(401, "authError : User already login, please logout or clear cookies")
         }
         next()

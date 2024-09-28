@@ -18,7 +18,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import User from "../models/users/user.models.js";
-import accessAndRefreshTokenGenrator from "../utils/accessRefreshTokenGenrator.js";
+import accessAndRefreshTokenGenerator from "../utils/accessRefreshTokenGenerator.js";
 import {
   uploadFileToCloudinary,
   RemoveFileFromCloudinary,
@@ -147,11 +147,11 @@ export const userLogin = asyncHandler(async (req, res) => {
   const { userName, password, saveInfo } = req.body;
 
   // Check if any field is empty
-  if ([userName, password, saveInfo].some((field) => field === undefined)) {
+  if ([userName, password].some((field) => field === undefined)) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [userName, password, saveInfo].some(
+    [userName, password].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -185,7 +185,7 @@ export const userLogin = asyncHandler(async (req, res) => {
     // Generate refresh and access tokens
     let tokens;
     try {
-      tokens = await accessAndRefreshTokenGenrator(searchUser);
+      tokens = await accessAndRefreshTokenGenerator(searchUser);
     } catch (error) {
       throw new ApiError(
         500,
@@ -281,7 +281,7 @@ export const userLogin = asyncHandler(async (req, res) => {
     // Return success response with cookie and user details
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
       .json(
         new ApiResponse(
           200,
@@ -318,12 +318,12 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
 
   // Check if any field is empty
   if (
-    [email, fullName, password, saveInfo].some((field) => field === undefined)
+    [email, fullName, password].some((field) => field === undefined)
   ) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [email, fullName, password, saveInfo].some(
+    [email, fullName, password].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -343,9 +343,11 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
       `DbError : ${error.message || "unable to find user"}`
     );
   }
-
   if (!searchUser) {
     throw new ApiError(409, "DataError : User not exists");
+  }
+  if(searchUser.fullName !== fullName){
+    throw new ApiError(400, "DataError : data not correct")
   }
 
   // Verify password
@@ -357,7 +359,7 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
     // Generate refresh and access tokens
     let tokens;
     try {
-      tokens = await accessAndRefreshTokenGenrator(searchUser);
+      tokens = await accessAndRefreshTokenGenerator(searchUser);
     } catch (error) {
       throw new ApiError(
         500,
@@ -453,7 +455,7 @@ export const userLoginWithEmail = asyncHandler(async (req, res) => {
     // Return success response with cookie and user details
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
       .json(
         new ApiResponse(
           200,
@@ -497,7 +499,7 @@ export const logOutUser = asyncHandler(async (req, res) => {
   }
 
   // Return success response and clear cookies
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -814,7 +816,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Return success response
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -861,7 +863,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
   }
 
   // Return success response indicating user was deleted
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -896,18 +898,18 @@ export const addAddress = asyncHandler(async (req, res) => {
     throw new ApiError(404, "DataError : No any data received");
   }
 
-  const { name, area, city, state, pincode, conutry } = req.body;
+  const { name, area, city, state, pincode, country } = req.body;
 
   // Check if any field is empty
   if (
-    [name, area, city, state, pincode, conutry].some(
+    [name, area, city, state, pincode, country].some(
       (field) => field === undefined
     )
   ) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [name, area, city, state, pincode, conutry].some(
+    [name, area, city, state, pincode, country].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -933,13 +935,13 @@ export const addAddress = asyncHandler(async (req, res) => {
     city,
     state,
     pincode,
-    conutry,
+    country,
   };
   let updateUser;
   try {
     updateUser = await User.findByIdAndUpdate(userData._id, {
       $push: { address: addressObject },
-    });
+    },{new:true}).select("-password -refreshToken");
   } catch (error) {
     throw new ApiError(
       500,
@@ -1001,8 +1003,8 @@ export const removeAddress = asyncHandler(async (req, res) => {
   }
 
   if (
-    !searchUser.address.find(
-      (objectId) => objectId._id?.toString() === req.params?.addressId
+    !(searchUser.address.find(
+      (objectId) => objectId._id?.toString() === req.params?.addressId)
     )
   ) {
     throw new ApiError(404, "DataEror : Address not found");

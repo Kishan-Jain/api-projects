@@ -18,7 +18,7 @@ import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import Seller from "../models/sellers/seller.models.js";
-import accessAndRefreshTokenGenrator from "../utils/accessRefreshTokenGenrator.js";
+import accessAndRefreshTokenGenerator from "../utils/accessRefreshTokenGenerator.js";
 import {
   uploadFileToCloudinary,
   RemoveFileFromCloudinary,
@@ -95,7 +95,7 @@ export const sellerRegister = asyncHandler(async (req, res) => {
   // Retrieve newly created seller without password and refreshToken
   let newCreatedSeller;
   try {
-    newCreatedSeller = await Seller.findById(newUser._id).select(
+    newCreatedSeller = await Seller.findById(newSeller._id).select(
       "-password -refreshToken"
     );
   } catch (error) {
@@ -147,11 +147,11 @@ export const sellerLogin = asyncHandler(async (req, res) => {
   const { userName, password, saveInfo } = req.body;
 
   // Check if any field is empty
-  if ([userName, password, saveInfo].some((field) => field === undefined)) {
+  if ([userName, password].some((field) => field === undefined)) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [userName, password, saveInfo].some(
+    [userName, password].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -185,7 +185,7 @@ export const sellerLogin = asyncHandler(async (req, res) => {
     // Generate refresh and access tokens
     let tokens;
     try {
-      tokens = await accessAndRefreshTokenGenrator(searchSeller);
+      tokens = await accessAndRefreshTokenGenerator(searchSeller);
     } catch (error) {
       throw new ApiError(
         500,
@@ -281,7 +281,7 @@ export const sellerLogin = asyncHandler(async (req, res) => {
     // Return success response with cookie and seller details
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
       .json(
         new ApiResponse(
           200,
@@ -318,12 +318,12 @@ export const sellerLoginWithEmail = asyncHandler(async (req, res) => {
 
   // Check if any field is empty
   if (
-    [email, fullName, password, saveInfo].some((field) => field === undefined)
+    [email, fullName, password].some((field) => field === undefined)
   ) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [email, fullName, password, saveInfo].some(
+    [email, fullName, password].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -347,7 +347,9 @@ export const sellerLoginWithEmail = asyncHandler(async (req, res) => {
   if (!searchSeller) {
     throw new ApiError(409, "DataError : Seller not exists");
   }
-
+  if(searchSeller.fullName !== fullName){
+    throw new ApiError(400, "DataError : Data not correct")
+  }
   // Verify password
   if (!(await searchSeller.isPasswordCorrect(password))) {
     throw new ApiError(400, "DataError : Incorrect password");
@@ -357,7 +359,7 @@ export const sellerLoginWithEmail = asyncHandler(async (req, res) => {
     // Generate refresh and access tokens
     let tokens;
     try {
-      tokens = await accessAndRefreshTokenGenrator(searchSeller);
+      tokens = await accessAndRefreshTokenGenerator(searchSeller);
     } catch (error) {
       throw new ApiError(
         500,
@@ -453,7 +455,7 @@ export const sellerLoginWithEmail = asyncHandler(async (req, res) => {
     // Return success response with cookie and seller details
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
+      .cookie("accessToken", accessToken, AccessTokenCookieOption)
       .json(
         new ApiResponse(
           200,
@@ -497,7 +499,7 @@ export const logOutUser = asyncHandler(async (req, res) => {
   }
 
   // Return success response and clear cookies
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -821,7 +823,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Return success response
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -868,7 +870,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
   }
 
   // Return success response indicating seller was deleted
-  if (cookies["refreshToken"]) {
+  if(req.cookies["refreshToken"]) {
     res.clearCookie("refreshToken", RefreshTokenCookieOption);
   }
   return res
@@ -903,18 +905,18 @@ export const addAddress = asyncHandler(async (req, res) => {
     throw new ApiError(404, "DataError : No any data received");
   }
 
-  const { name, area, city, state, pincode, conutry } = req.body;
+  const { name, area, city, state, pincode, country } = req.body;
 
   // Check if any field is empty
   if (
-    [name, area, city, state, pincode, conutry].some(
+    [name, area, city, state, pincode, country].some(
       (field) => field === undefined
     )
   ) {
     throw new ApiError(404, "DataError : All fields are required");
   }
   if (
-    [name, area, city, state, pincode, conutry].some(
+    [name, area, city, state, pincode, country].some(
       (field) => field?.toString().trim() === ""
     )
   ) {
@@ -940,13 +942,13 @@ export const addAddress = asyncHandler(async (req, res) => {
     city,
     state,
     pincode,
-    conutry,
+    country,
   };
   let updateSeller;
   try {
     updateSeller = await Seller.findByIdAndUpdate(userData._id, {
       $push: { address: addressObject },
-    });
+    },{new : true}).select("-password -refreshToken");
   } catch (error) {
     throw new ApiError(
       500,

@@ -5,12 +5,9 @@ import jwt from "jsonwebtoken";
 // subSchema
 const productID = new mongoose.Schema(
   {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: [true, "this is required field"],
-    },
-    stock: { type: Number, default: 0 },
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: [true, "this is required field"],
   },
   { timestamps: true }
 );
@@ -112,7 +109,7 @@ const sellerSchema = new mongoose.Schema(
       type: String,
       default: process.env.DEFAULT_USER_AVATAR_CLOUDINARY_URL,
     },
-    productlist: [productID],
+    productList: [productID],
     orderlist: [orderId],
     repleshOrderList: [repleshOrderId],
     returnOrderList: [returnOrderId],
@@ -138,26 +135,26 @@ sellerSchema.methods.isPasswordCorrect = async function (password) {
 };
 
 // methods for generate Access and Refresh Token
-sellerSchema.methods.genrateAccessToken = function () {
+sellerSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
       username: this.username,
       userType: "Seller",
     },
-    process.env.ACCESS_TOKEN_SECRET,
+    process.env.ACCESS_TOKEN_SECRET_KEY,
     {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     }
   );
 };
 
-sellerSchema.methods.genrateRefreshToken = function () {
+sellerSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
       _id: this._id,
     },
-    process.env.REFRESH_TOKEN_SECRET,
+    process.env.REFRESH_TOKEN_SECRET_KEY,
     {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     }

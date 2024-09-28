@@ -2,13 +2,13 @@ import mongoose from 'mongoose'
 
 const productSchema = new mongoose.Schema({
     title : {type:String, required : [true, "this is required field" ]},
-    discription : {type:String, required : [true, "this is required field" ]},
-    categoryName : [{
+    description : {type:String, required : [true, "this is required field" ]},
+    categoryId : [{
         type : String,
         ref: "Category",
         required:[true, "this is required field" ]
     }],
-    pics : [{pic :{type:String, required : [true, "this is required field" ]}}],
+    pic : {type:String, required : [true, "this is required field" ]},
     price : {type:Number, required : [true, "this is required field" ]},
     discount : {type:Number, default: 0},
     stock : {type:Number, default: 1},

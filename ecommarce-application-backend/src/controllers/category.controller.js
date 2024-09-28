@@ -90,6 +90,39 @@ export const addNewCategory = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, searchNewCategory, "successMessage : Category added successfully"));
 });
 
+export const getCategoryDetails = asyncHandler(async (req, res) => {
+  // Check if user is authenticated
+  if(!req.userId){
+    throw new ApiError(400, "AuthError : Not Authenticate")
+  }
+  if(req.userType !== "Seller"){
+    throw new ApiError(400, "authError : User not authenticate")
+  }
+  if(!req.params?.categoryId){
+    throw new ApiError(400, "DataError : Category id not received");
+  }
+  // Find the existing category by ID
+  let searchCategory
+  try {
+    searchCategory = await Category.findById(req.params?.categoryId);
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find Category"}`)
+  }
+
+  if (!searchCategory) {
+    throw new ApiError(400, "DataError : Category id not correct");
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        searchCategory,
+        "SuccessMessage : Category data updated successfully"
+      )
+    );
+});
+
 export const getAllCategories = asyncHandler(async (req, res) => {
   
   // Check if user is authenticated

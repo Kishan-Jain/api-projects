@@ -5,19 +5,19 @@ take user -> genrate refresh and access token by schema method -> chack genrate 
 save refresh token on database -> return tokens for users
 */
 
-const accessAndRefreshTokenGenrator = async (user) => {
+const accessAndRefreshTokenGenerator = async (user) => {
   try {
     if(!user){
 
     }
     let accessToken, refreshToken
     try {
-      accessToken = await user.genrateAccessToken();
+      accessToken = await user.generateAccessToken();
     } catch (error) {
       
     }
     try {
-      refreshToken = await user.genrateRefreshToken();
+      refreshToken = await user.generateRefreshToken();
     } catch (error) {
       
     }
@@ -25,7 +25,7 @@ const accessAndRefreshTokenGenrator = async (user) => {
     if (
       [accessToken, refreshToken].some((field) => field === undefined)
     ) {
-      throw new ApiError(500, "server error in genrating Tokens");
+      throw new ApiError(500, "server error in generating Tokens");
     }
 
     if (
@@ -44,4 +44,4 @@ const accessAndRefreshTokenGenrator = async (user) => {
   }
 };
 
-export default accessAndRefreshTokenGenrator
+export default accessAndRefreshTokenGenerator
