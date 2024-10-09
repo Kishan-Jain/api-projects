@@ -1,9 +1,6 @@
 import mongoose from "mongoose";
 
-// miniSchema
-
 // mainSchema
-
 const paymentSchema = new mongoose.Schema({
   orderId: {
     type: mongoose.Schema.Types.ObjectId,

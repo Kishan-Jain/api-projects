@@ -12,6 +12,14 @@
  * - delete user@
  * - add new Address@
  * - remove Address@
+ * 
+ * Add to new product in cart 
+ * remove product from cart
+ * get All product from cart
+ * 
+ * add New Product in wise list
+ * remove product from wise list
+ * get all product from wise list
  */
 
 import asyncHandler from "../utils/asyncHandler.js";
@@ -28,7 +36,9 @@ import {
   RefreshTokenCookieOption,
 } from "../constants.js";
 import { isSpace } from "../utils/customMethods.js";
+import Product from "../models/products/product.models.js";
 
+// user utility controller
 export const userRegister = asyncHandler(async (req, res) => {
   /**
    * validate user not login already
@@ -1038,3 +1048,381 @@ export const removeAddress = asyncHandler(async (req, res) => {
       )
     );
 });
+
+// Cart Controllers
+export const addNewProductInCartList = asyncHandler(async (req, res) => {
+  /**
+   * check user login
+   * validate product id
+   * create cart object and push in user database
+   * return responce
+   */
+
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  if (!req.params?.projectId) {
+    throw new ApiError(404, "DataError : ProjectId not received from params");
+  }
+
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+
+  // search product details
+  let searchProduct;
+  try {
+    searchProduct = await Product.findById(req.params?.projectId).select("_id price")
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find product details"}`)
+  }
+  if(!searchProduct){
+    throw new ApiError(409, "DataError : product id not valid")
+  }
+
+  // update user 
+  const productObject = {
+    ProductId : searchProduct._id,
+    productPrice : searchProduct.price
+  }
+  let updateUser
+  try {
+    updateUser = await User.findByIdAndUpdate(req.userId, {
+      $push : {
+        cartBox : productObject
+      }
+    })
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update user"}`)
+  }
+  if(!updateUser){
+    throw new ApiError(500, "DbError : user not updated")
+  }
+
+  // return with success message 
+  return res
+  .status(200)
+  .json(new ApiResponse(200, {}, "successMessage : Product added to cart box"))
+})
+
+export const removeProductFromCartBox = asyncHandler(async (req, res) => {
+  /**
+   * chack user is login
+   * check projectId from params and validate its
+   * remove this from user
+   * return responce
+   */
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  if (!req.params?.projectId) {
+    throw new ApiError(404, "DataError : ProductId not received from params");
+  }
+
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+  // search product id in user cartList
+  if(searchUser.cartBox.find(objectId => objectId.ProductId.toString() !== req.params?.projectId)){
+    throw new ApiError(404, "DataError : ProductId not exits in user cartBox")
+  }
+  // remove product and update user
+  try {
+    const newCartList = searchUser.cartBox.filter(objectId => objectId.ProductId.toString() !== req.params?.productId)
+    searchUser.cartBox = newCartList
+    await searchUser.save({validateBeforeSave : false})
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to update user"}`)
+  }
+  // varify product id removed from user cartBox
+  if(searchUser.cartBox.find(objectId => objectId.ProductId.toString() === req.params?.projectId)){
+    throw new ApiError(404, "DataError : ProductId not exits in user cartBox")
+  }
+  return res
+  .status(200)
+  .json(new ApiResponse(200, {}, "successMessage : product remove successfully from user"))
+})
+
+export const getAllProductFromCart = asyncHandler(async (req, res) => {
+  /**
+   * check user is validate
+   * return 
+   */
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "cartBox"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+
+  // check cart is Empty
+  if((searchUser.cartBox).length === 0){
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "successMessage : Cart is Empty"))
+  }
+
+  let cartAllProduct = []
+  searchUser.cartBox.forEach(async object => {
+    const productId = object.ProductId?.toString()
+    let searchProduct
+    try {
+      searchProduct = await Product.findById(productId).select("title pic price discount")
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "unable to find product"}`)
+    }
+    if(!searchProduct){
+      throw new ApiError(500, "DbError : product not found")
+    }
+    cartAllProduct.push(searchProduct)
+  });
+  if(cartAllProduct.length === 0){
+    throw new ApiError(500, "DbError : Cart Product Error")
+  }
+  // return responce
+  return res
+  .status(200)
+  .json(new ApiResponse(200, cartAllProduct, "successMessage : All product reteived successfully"))
+})
+
+// wise list controller
+export const addNewProductInWisetList = asyncHandler(async (req, res) => {
+  /**
+   * check user login
+   * validate product id
+   * create cart object and push in user database
+   * return responce
+   */
+
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  if (!req.params?.projectId) {
+    throw new ApiError(404, "DataError : ProjectId not received from params");
+  }
+
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "-password -refreshToken"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+
+  // search product details
+  let searchProduct;
+  try {
+    searchProduct = await Product.findById(req.params?.projectId).select("_id price")
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to find product details"}`)
+  }
+  if(!searchProduct){
+    throw new ApiError(409, "DataError : product id not valid")
+  }
+
+  // update user 
+  let updateUser
+  try {
+    updateUser = await User.findByIdAndUpdate(req.userId, {
+      $push : {
+        wiseList : {ProductId : req.params?.productId}
+      }
+    })
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "Unable to update user"}`)
+  }
+  if(!updateUser){
+    throw new ApiError(500, "DbError : user not updated")
+  }
+
+  // return with success message 
+  return res
+  .status(200)
+  .json(new ApiResponse(200, {}, "successMessage : Product added to wise list"))
+})
+
+export const removeProductFromWiseList = asyncHandler(async (req, res) => {
+  /**
+   * chack user is login
+   * check projectId from params and validate its
+   * remove this from user
+   * return responce
+   */
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  if (!req.params?.projectId) {
+    throw new ApiError(404, "DataError : ProductId not received from params");
+  }
+
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "wiseList"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+  // search product id in user cartList
+  if(searchUser.wiseList.find(objectId => objectId.ProductId.toString() !== req.params?.projectId)){
+    throw new ApiError(404, "DataError : ProductId not exits in user wisrList")
+  }
+  // remove product and update user
+  try {
+    const newWiseList = searchUser.wiseList.filter(objectId => objectId.ProductId.toString() !== req.params?.productId)
+    searchUser.cartBox = newWiseList
+    await searchUser.save({validateBeforeSave : false})
+  } catch (error) {
+    throw new ApiError(500, `DbError : ${error.message || "unable to update user"}`)
+  }
+  // varify product id removed from user cartBox
+  if(searchUser.wiseList.find(objectId => objectId.ProductId.toString() === req.params?.projectId)){
+    throw new ApiError(404, "DataError : ProductId not exits in user Wise list")
+  }
+  return res
+  .status(200)
+  .json(new ApiResponse(200, {}, "successMessage : product remove successfully from user"))
+})
+
+export const getAllProductFromWiseList = asyncHandler(async (req, res) => {
+  /**
+   * check user is validate
+   * return 
+   */
+  // Check if user is authenticated
+  if (!req.userId) {
+    throw new ApiError(400, "LoginError : UserId not available");
+  }
+  if (!req.params?.userId) {
+    throw new ApiError(404, "DataError : UserId not received from params");
+  }
+  if (req.params.userId !== req.userId) {
+    throw new ApiError(409, "AuthError : Unaurthorize access");
+  }
+  
+  let searchUser;
+  try {
+    searchUser = await User.findById(req.userId).select(
+      "cartBox"
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `DbError : ${error.message || "unable to find user"}`
+    );
+  }
+  if (!searchUser) {
+    throw new ApiError(409, "DataError : User not exists");
+  }
+
+  // check cart is Empty
+  if((searchUser.wiseList).length === 0){
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "successMessage : Empty Wise List"))
+  }
+
+  let WiseListAllProduct = []
+  searchUser.wiseList.forEach(async object => {
+    const productId = object.ProductId?.toString()
+    let searchProduct
+    try {
+      searchProduct = await Product.findById(productId).select("title pic price discount")
+    } catch (error) {
+      throw new ApiError(500, `DbError : ${error.message || "unable to find product"}`)
+    }
+    if(!searchProduct){
+      throw new ApiError(500, "DbError : product not found")
+    }
+    WiseListAllProduct.push(searchProduct)
+  });
+  if(WiseListAllProduct.length === 0){
+    throw new ApiError(500, "DbError : wise list Product Error")
+  }
+  // return responce
+  return res
+  .status(200)
+  .json(new ApiResponse(200, WiseListAllProduct, "successMessage : All product reteived successfully"))
+})

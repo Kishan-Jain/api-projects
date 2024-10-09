@@ -1,6 +1,7 @@
 /**
  * # user
- * give A order
+ * give A single product order
+ * give full cart product order
  * get order details for user
  * get all orders details
  * get all replase order details
@@ -26,7 +27,7 @@ import Seller from "../models/sellers/seller.models.js"
 import User from "../models/users/user.models.js"
 
 
-export const newOrder = asyncHandler(async (req, res) => {
+export const giveSigleProductOrder = asyncHandler(async (req, res) => {
   /**
    * check user is authenticate
    * varify userId 

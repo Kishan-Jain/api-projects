@@ -125,8 +125,8 @@ const userSchema = new mongoose.Schema(
     orderlist: [order],
     repleshOrderList: [repleshOrderId],
     returnOrderList: [returnOrderId],
-    wiselist: [wiseItem],
-    cartbox: [cartItem],
+    wiseList: [wiseItem],
+    cartBox: [cartItem],
     payments: [paymentId],
     address: [address],
     avatar: {
