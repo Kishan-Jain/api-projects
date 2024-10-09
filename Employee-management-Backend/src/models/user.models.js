@@ -51,7 +51,7 @@ const userDetailSchema = new Schema({
     // Date when the user joined, default is the current date
     joiningDate: {
         type: Date,
-        default: Date.now
+        default: Date.now()
     },
     // Status to check if the user is verified
     isVerify: {
